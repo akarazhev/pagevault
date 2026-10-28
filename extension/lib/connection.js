@@ -28,7 +28,7 @@ export function normalizePlatform(value) {
 }
 export function platformInstructions(platform) {
   switch (normalizePlatform(platform)) {
-    case 'mac': return {detail:'macOS 13 и новее: откройте загрузки и выберите пакет .pkg. Он подходит для Intel и Apple Silicon.', install:'Откройте .pkg и выберите используемые браузеры. Установка выполняется для текущего пользователя и сохраняет путь существующего архива.', command:''};
+    case 'mac': return {detail:'macOS 13 и новее: откройте GitHub Releases и выберите пакет -unsigned.pkg для Intel и Apple Silicon.', install:'Откройте .pkg и выберите используемые браузеры. У пакета нет подписи Apple; macOS может потребовать разрешения в разделе «Конфиденциальность и безопасность». Установка сохраняет путь существующего архива.', command:''};
     case 'win': return {detail:'Windows: скачайте и распакуйте полный комплект PageVault с готовыми программами.', install:'Откройте install-windows.cmd двойным щелчком для Chrome. Для Edge, Brave или Chromium используйте инструкции по ссылке ниже.', command:'.\\install-windows.cmd'};
     case 'linux': return {detail:'Linux: скачайте и распакуйте полный комплект PageVault с готовыми программами.', install:'В терминале из папки комплекта выполните команду для Chrome. Для Edge, Brave или Chromium замените chrome на нужный браузер.', command:'bash install.sh chrome'};
     default: return {detail:'Выберите вашу операционную систему. На странице загрузок доступны опубликованные выпуски PageVault.', install:'После выбора системы здесь появятся инструкции установки локального компонента.', command:''};

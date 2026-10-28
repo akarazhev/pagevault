@@ -2,11 +2,26 @@
 
 PageVault состоит из расширения браузера и локального помощника, который записывает SQLite и предоставляет MCP для агента. В 1.3.0 подготовлен пользовательский установщик macOS. Расширение показывает состояние помощника, версию, путь базы, ошибку связи и последовательность подключения в настройках.
 
+## Загрузка из GitHub Releases
+
+PageVault распространяется бесплатно через [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Для установки не нужны аккаунт разработчика магазина или Apple Developer Program.
+
+| Файл выпуска | Назначение |
+|---|---|
+| `PageVault-1.3.0.zip` | Полный комплект: расширение, программы для шести ОС/архитектур, скрипты установки, исходники и документация |
+| `PageVault-1.3.0-macOS-unsigned.pkg` | Только помощник macOS для Intel и Apple Silicon; выбирайте вместе с ZIP расширения или полным комплектом |
+| `PageVault-Extension-1.3.0.zip` | Только расширение; `manifest.json` находится в корне распакованной папки |
+| Одноимённые `.sha256` | Контрольные суммы соответствующих файлов |
+
+Автоматические архивы GitHub **Source code** содержат исходники без готовых программ. Для обычной установки скачайте именованный комплект из таблицы.
+
+Расширение загружается вручную: распакуйте его в постоянную папку, откройте `chrome://extensions`, включите «Режим разработчика», нажмите «Загрузить распакованное расширение» и выберите папку с `manifest.json`. В полном комплекте это `pagevault/extension/`. Сохраните эту папку на месте; обновления устанавливаются вручную. Порядок описан в [документации Chrome](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked).
+
 ## macOS
 
 Требуется macOS 13 или новее. Один пакет содержит программу для Intel и Apple Silicon. Обычная установка выполняется для текущего пользователя; системные каталоги и другие учётные записи не настраиваются.
 
-Для опубликованного подписанного выпуска:
+Для выпуска 1.3.0:
 
 1. Получите `.pkg` на [странице выпусков](https://github.com/akarazhev/pagevault/releases).
 2. Откройте его в macOS Installer. На шаге выбора компонентов отметьте нужные браузеры: Chrome включён по умолчанию, Chromium, Edge и Brave доступны отдельно.
@@ -14,9 +29,9 @@ PageVault состоит из расширения браузера и лока�
 4. Откройте браузер и настройки PageVault. Нажмите «Проверить подключение» и проверьте версию помощника и путь SQLite.
 5. Откройте обычную веб-страницу, включите запись для её сайта и сохраните снимок. Проверьте его в архиве.
 
-На момент подготовки 1.3.0 публичных загрузок ещё нет. Локальная сборка `PageVault-1.3.0-macOS-unsigned.pkg` — тестовый пакет без Developer ID и нотарификации; он не заменяет подписанный публичный выпуск. Публиковать обычный установщик следует после настройки подписи и проверки нотарификации.
+`PageVault-1.3.0-macOS-unsigned.pkg` распространяется без подписи Developer ID и нотарификации. Если macOS блокирует открытие скачанного пакета, проверьте источник и в «Системные настройки → Конфиденциальность и безопасность» выберите «Всё равно открыть», если действие доступно. Корпоративные ограничения могут запрещать такое разрешение; ZIP также не гарантирует отсутствие системных проверок. Это разрешение для конкретного файла по [инструкции Apple](https://support.apple.com/en-us/102445).
 
-Для ручной проверки из корня репозитория откройте готовый тестовый пакет:
+Для открытия готового пакета из корня репозитория:
 
 ```bash
 open dist/PageVault-1.3.0-macOS-unsigned.pkg
@@ -62,17 +77,17 @@ bash install.sh chrome
 
 ## Сборка пакетов
 
-Для тестового PKG на macOS с Go 1.27.3 и системными инструментами Apple:
+Для PKG без Developer ID на macOS с Go 1.27.3 и системными инструментами Apple:
 
 ```bash
 go run ./cmd/package-macos --unsigned
 ```
 
-Builder компилирует обе Darwin-архитектуры из текущих исходников, объединяет их через `lipo`, подписывает исполняемый файл ad hoc для локального запуска и создаёт PKG/SHA-256 в `dist/`. Имена тестовых файлов оканчиваются на `-unsigned.pkg`. Такой режим не использует сертификаты или Apple Developer account.
+Builder компилирует обе Darwin-архитектуры из текущих исходников, объединяет их через `lipo`, подписывает исполняемый файл ad hoc и создаёт PKG/SHA-256 в `dist/`. Имена неподписанных пакетов оканчиваются на `-unsigned.pkg`. Этот режим используется для GitHub Releases и не требует сертификатов или Apple Developer account; ad-hoc подпись программы не подтверждает личность разработчика в Gatekeeper.
 
 ### Первая настройка подписи
 
-Для Developer ID требуется членство в [Apple Developer Program](https://developer.apple.com/help/glossary/developer-id-certificate/). Если его ещё нет, начните с [регистрации программы](https://developer.apple.com/help/account/membership/program-enrollment); локальные проверки можно продолжать с тестовым PKG.
+Подпись Developer ID остаётся дополнительным вариантом для будущих выпусков. Для неё требуется членство в [Apple Developer Program](https://developer.apple.com/help/glossary/developer-id-certificate/). При выборе этого варианта начните с [регистрации программы](https://developer.apple.com/help/account/membership/program-enrollment).
 
 1. На Mac создайте запрос сертификата через Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority. Укажите свою почту, имя ключа и сохранение на диск. Подробности: [инструкция Apple по CSR](https://developer.apple.com/help/account/certificates/create-a-certificate-signing-request).
 2. В аккаунте Apple откройте Certificates, Identifiers & Profiles и создайте сертификаты **Developer ID Application** и **Developer ID Installer**, используя запрос сертификата. Скачайте и откройте `.cer`, чтобы добавить сертификаты в Keychain. Для создания нужен доступ Account Holder; порядок описан у [Apple](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/).
@@ -107,12 +122,12 @@ pkgutil --check-signature dist/PageVault-1.3.0-macOS.pkg
 (cd dist && shasum -a 256 PageVault-1.3.0-macOS.pkg > PageVault-1.3.0-macOS.pkg.sha256)
 ```
 
-Stapling меняет байты PKG: последняя команда пересчитывает checksum для итогового файла. Подпись, нотарификация и проверка на чистой системе нужны перед публичным распространением; в локальном прогоне без сертификатов они не выполняются. Процесс описан у [Apple](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
+Stapling меняет байты PKG: последняя команда пересчитывает checksum для итогового файла. Перед публикацией пакета как подписанного и нотарифицированного проверьте эти шаги и установку на чистой системе. Выпуск 1.3.0 использует явно обозначенный неподписанный пакет. Процесс подписи описан у [Apple](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
 
-ZIP расширения для магазина собирается отдельно:
+ZIP расширения для отдельной ручной установки собирается отдельно:
 
 ```bash
 go run ./cmd/release --extension-only
 ```
 
-В `PageVault-Extension-1.3.0.zip` файл `manifest.json` лежит в корне, без Go-программ и установщиков. Полный комплект по-прежнему создаётся командой `go run ./cmd/release`.
+В `PageVault-Extension-1.3.0.zip` файл `manifest.json` лежит в корне, без Go-программ и установщиков. После распаковки выберите эту папку при загрузке расширения. Полный комплект создаётся командой `go run ./cmd/release`.

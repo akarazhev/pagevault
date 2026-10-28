@@ -13,9 +13,9 @@ import (
 
 func main() {
 	var opts macpkg.Options
-	flag.StringVar(&opts.Output, "output", "", "Output .pkg (local test names end in -unsigned.pkg)")
+	flag.StringVar(&opts.Output, "output", "", "Output .pkg (unsigned names end in -unsigned.pkg)")
 	flag.StringVar(&opts.Go, "go", "go", "Go compiler executable")
-	flag.BoolVar(&opts.Unsigned, "unsigned", false, "Build an explicitly labelled local test package without Developer ID")
+	flag.BoolVar(&opts.Unsigned, "unsigned", false, "Build an explicitly labelled package without Developer ID")
 	flag.StringVar(&opts.ApplicationIdentity, "sign-app", "", "Developer ID Application identity")
 	flag.StringVar(&opts.InstallerIdentity, "sign-installer", "", "Developer ID Installer identity")
 	flag.Parse()

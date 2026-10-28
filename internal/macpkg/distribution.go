@@ -49,7 +49,7 @@ func distributionXML() []byte {
 func writeResources(dir string, unsigned bool) error {
 	note := ""
 	if unsigned {
-		note = "<p><strong>Тестовый пакет без подписи Developer ID.</strong> Для публичного распространения требуется подписанный и нотарифицированный выпуск.</p>"
+		note = "<p><strong>Пакет без подписи Developer ID и нотарификации.</strong> macOS может потребовать вручную разрешить установку в разделе «Конфиденциальность и безопасность». Загружайте PageVault со страницы GitHub Releases проекта.</p>"
 	}
 	pages := map[string]string{
 		"welcome.html":    fmt.Sprintf(`<html lang="ru"><meta charset="utf-8"><body><h1>PageVault %s</h1>%s<p>Локальный помощник сохраняет выбранные страницы в SQLite и даёт агенту доступ к архиву через MCP.</p><p>Установка выполняется для текущего пользователя. На следующем шаге выберите используемые браузеры; Chrome включён по умолчанию. Поддерживаются macOS 13 и новее, Intel и Apple Silicon.</p><p>При обновлении сохраняется путь действующего архива. Установщик попросит закрыть выбранные браузеры; после обновления переподключите MCP-клиент.</p></body></html>`, buildinfo.Version, note),

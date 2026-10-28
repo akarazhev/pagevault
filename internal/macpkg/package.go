@@ -34,7 +34,7 @@ func Build(ctx context.Context, opts Options) (Artifact, error) {
 			return Artifact{}, errors.New("--unsigned cannot be combined with signing identities")
 		}
 	} else if opts.ApplicationIdentity == "" || opts.InstallerIdentity == "" {
-		return Artifact{}, errors.New("provide both Developer ID Application and Installer identities, or use --unsigned for local testing")
+		return Artifact{}, errors.New("provide both Developer ID Application and Installer identities, or use --unsigned for a package without Developer ID")
 	}
 	if opts.Root == "" {
 		opts.Root = "."
@@ -186,7 +186,7 @@ func safeOutput(root, output string, unsigned bool) error {
 		return errors.New("package output must end in .pkg")
 	}
 	if unsigned && !strings.HasSuffix(output, "-unsigned.pkg") {
-		return errors.New("local test output must end in -unsigned.pkg")
+		return errors.New("unsigned output must end in -unsigned.pkg")
 	}
 	parent := filepath.Dir(output)
 	for {

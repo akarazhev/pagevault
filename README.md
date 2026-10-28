@@ -8,16 +8,16 @@ PageVault сохраняет загруженное содержимое отк�
 
 - Сборщик пользовательского macOS PKG для Intel и Apple Silicon с выбором браузеров и сохранением действующего пути базы, включая прежний нестандартный runtime.
 - В настройках появился экран подключения: версия, SQLite, ошибка связи, шаги установки, выбор ОС и повторная проверка.
-- Отдельный ZIP расширения для Chrome Web Store, политика приватности и материалы карточки магазина.
+- Отдельный ZIP расширения для ручной установки и политика приватности.
 
-Локальный PKG сейчас подготовлен в явно помеченном тестовом режиме без Developer ID. Подписанный/нотарифицированный публичный выпуск и публикация расширения требуют отдельного завершения. Установка и сборка: [docs/INSTALLATION.md](docs/INSTALLATION.md).
+PageVault распространяется бесплатно через [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Расширение устанавливается распакованным. macOS PKG явно помечен `-unsigned.pkg`: у него нет подписи Developer ID и нотарификации, поэтому macOS может потребовать ручного разрешения установки. Установка и сборка: [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## MCP в 1.2
 
 - Локальный агент читает архив через MCP: поиск страниц, накопленные блоки, история снимков и список сайтов.
 - Команда `pagevault-host mcp --db PATH` работает через stdio и открывает существующую SQLite только для чтения.
 - Большие документы передаются частями с Unicode-смещениями и проверкой хеша; сохранённый HTML агенту не выдаётся.
-- Записана модель распространения: Chrome Web Store для расширения и отдельный установщик локального компонента.
+- Расширение и локальный компонент распространяются вместе через GitHub Releases.
 
 Подключение агента: [docs/MCP.md](docs/MCP.md). План распространения и open source: [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
 
@@ -54,11 +54,13 @@ macOS-программы и PKG требуют macOS 13 или новее. PKG �
 
 ## Быстрая установка
 
-Для macOS также подготовлен `.pkg`: он регистрирует помощника через Installer без терминальной команды. Статус тестовой/подписанной сборки и последовательность установки описаны в [docs/INSTALLATION.md](docs/INSTALLATION.md). Ниже сохранена установка из полного комплекта для всех поддерживаемых ОС. Публикация в Chrome Web Store ещё не выполнена; расширение пока загружается распакованным.
+Откройте [GitHub Releases](https://github.com/akarazhev/pagevault/releases) и скачайте **`PageVault-1.3.0.zip`** — полный комплект для всех поддерживаемых ОС. Автоматические ссылки GitHub **Source code** содержат исходники без готовых программ.
+
+На macOS можно использовать отдельный **`PageVault-1.3.0-macOS-unsigned.pkg`** для установки помощника и **`PageVault-Extension-1.3.0.zip`** для расширения. PKG не подписан Apple; порядок ручного разрешения и установки описан в [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ### 1. Распакуйте полный комплект
 
-Используйте постоянную папку, например `Documents/PageVault`. Браузер будет читать расширение из подпапки `extension`, поэтому сохраните её на месте.
+Распакуйте `PageVault-1.3.0.zip` в постоянную папку, например `Documents/PageVault`. Браузер будет читать расширение из подпапки `extension`, поэтому сохраните её на месте. При отдельном ZIP расширения выберите распакованную папку, содержащую `manifest.json`.
 
 ### 2. Зарегистрируйте помощника
 
@@ -229,13 +231,13 @@ go run ./cmd/release
 
 Только исходники: `go run ./cmd/release -source-only`. Повторно упаковать уже собранные программы: `go run ./cmd/release -skip-build`. Полная сборка требует доступа к закреплённым Go-зависимостям; готовые программы работают локально без этого доступа.
 
-Для магазина: `go run ./cmd/release --extension-only`. Тестовый macOS PKG: `go run ./cmd/package-macos --unsigned`. Скриншоты на искусственных данных: `node scripts/store-screenshots.cjs`. Сборка подписанного компонента и нотарификация описаны в [docs/INSTALLATION.md](docs/INSTALLATION.md).
+Отдельный ZIP расширения: `go run ./cmd/release --extension-only`. macOS PKG без Developer ID: `go run ./cmd/package-macos --unsigned`. Оба файла вместе с полным комплектом и контрольными суммами распространяются через GitHub Releases. Дополнительный вариант подписанной сборки описан в [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## Документация и лицензии
 
 - [Архитектура](docs/ARCHITECTURE.md), [протокол](docs/NATIVE_PROTOCOL.md), [схема](docs/SCHEMA.md).
 - [Обновление](docs/UPGRADING.md), [проверка выпуска](docs/VERIFICATION.md).
-- [MCP для агента](docs/MCP.md), [распространение и Chrome Web Store](docs/DISTRIBUTION.md).
-- [Установка PKG](docs/INSTALLATION.md), [приватность](docs/PRIVACY.md), [материалы магазина](docs/CHROME_WEB_STORE.md).
+- [MCP для агента](docs/MCP.md), [распространение через GitHub Releases](docs/DISTRIBUTION.md).
+- [Установка PKG](docs/INSTALLATION.md), [приватность](docs/PRIVACY.md), [архив материалов магазина](docs/CHROME_WEB_STORE.md).
 - Исходный код PageVault — MIT (`LICENSE`); зависимости — `THIRD_PARTY_NOTICES.md`.
 - Основания реализации: [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Go connections](https://go.dev/doc/database/manage-connections), [modernc SQLite](https://pkg.go.dev/modernc.org/sqlite).
