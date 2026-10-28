@@ -1,4 +1,4 @@
-module pagevault.local/pagevault
+module github.com/akarazhev/pagevault
 
 go 1.27.3
 

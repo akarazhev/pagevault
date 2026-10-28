@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 var browsers = []struct{ ID, Name, BundleID string }{

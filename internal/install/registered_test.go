@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 func writeObject(t *testing.T, path string, value any) {

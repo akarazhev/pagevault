@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/akarazhev/pagevault/internal/archive"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"pagevault.local/pagevault/internal/archive"
 )
 
 func TestMCPMissingDatabaseAndBadArgsStayOffStdout(t *testing.T) {

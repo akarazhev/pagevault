@@ -1,7 +1,103 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Archive — PageVault</title><link rel="stylesheet" href="styles.css"><script type="module" src="archive.js"></script></head>
-<body class="app-body"><header class="app-header"><a class="brand" href="archive.html"><span class="brand-mark" aria-hidden="true">P</span>PageVault</a><nav class="header-nav" aria-label="Main navigation"><a class="active" href="archive.html" aria-current="page">Archive</a><a href="options.html">Settings</a></nav><span class="local-label">On your computer</span></header>
-<main class="workspace"><section class="page-heading"><div><p class="eyebrow">Personal library</p><h1>Page archive</h1><p class="muted">Text you have seen, with its history of changes.</p></div><button id="refresh" class="button">Refresh</button></section>
-<div id="message" class="notice" role="status" hidden></div><section class="stats-strip" aria-label="Archive statistics"><div><strong id="stat-pages">—</strong><span>pages</span></div><div><strong id="stat-captures">—</strong><span>captures</span></div><div><strong id="stat-blocks">—</strong><span>unique blocks</span></div><div><strong id="stat-size">—</strong><span>database size</span></div><p id="connection-status" class="connection-label">Checking connection…</p></section>
-<section class="archive-shell"><aside class="page-browser" aria-label="Archived pages"><form id="search-form" class="search-form"><label class="sr-only" for="search">Search archive</label><input id="search" type="search" placeholder="Search text, title or URL" autocomplete="off"><button class="button small" type="submit">Search</button></form><label class="filter-label" for="domain">Site</label><select id="domain"><option value="">All sites</option></select><div class="list-heading"><span id="result-count">Loading pages…</span></div><div id="page-list" class="page-list" aria-live="polite"><p class="empty-state">Loading archive…</p></div><div class="pagination"><button id="previous" class="button small" disabled>← Previous</button><span id="page-range">—</span><button id="next" class="button small" disabled>Next →</button></div></aside>
-<section class="document-panel" aria-label="Page content"><div id="detail-empty" class="detail-empty"><span class="empty-symbol" aria-hidden="true">▤</span><h2>Keep important pages close</h2><p>Select a page to read accumulated text or open a specific version.</p><p class="help">To get started, open a site and enable recording using the PageVault icon.</p></div><div id="detail" hidden><header class="document-heading"><div class="document-heading-top"><p id="detail-host" class="eyebrow"></p><button id="delete-page" class="button danger small">Delete page</button></div><h2 id="detail-title"></h2><div id="detail-link" class="source-link"></div><p id="detail-meta" class="help"></p><div class="document-actions"><div class="segmented" role="group" aria-label="View mode"><button id="view-accumulated" class="selected" aria-pressed="true">All blocks</button><button id="view-versions" aria-pressed="false">Versions</button></div><button id="export" class="button small">Export JSON ↓</button></div></header><div id="version-bar" class="version-bar" hidden><label for="version-select">Capture</label><select id="version-select"></select><button id="more-versions" class="button small" hidden>More versions</button></div><div id="view-note" class="view-note"></div><div id="capture-warnings" class="notice warning" hidden></div><article id="blocks" class="archive-content"></article></div></section></section></main></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Archive — PageVault</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="archive.js"></script>
+  </head>
+  <body class="app-body">
+    <header class="app-header">
+      <a class="brand" href="archive.html"
+        ><span class="brand-mark" aria-hidden="true">P</span>PageVault</a
+      >
+      <nav class="header-nav" aria-label="Main navigation">
+        <a class="active" href="archive.html" aria-current="page">Archive</a
+        ><a href="options.html">Settings</a>
+      </nav>
+      <span class="local-label">On your computer</span>
+    </header>
+    <main class="workspace">
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">Personal library</p>
+          <h1>Page archive</h1>
+          <p class="muted">Text you have seen, with its history of changes.</p>
+        </div>
+        <button id="refresh" class="button">Refresh</button>
+      </section>
+      <div id="message" class="notice" role="status" hidden></div>
+      <section class="stats-strip" aria-label="Archive statistics">
+        <div><strong id="stat-pages">—</strong><span>pages</span></div>
+        <div><strong id="stat-captures">—</strong><span>captures</span></div>
+        <div><strong id="stat-blocks">—</strong><span>unique blocks</span></div>
+        <div><strong id="stat-size">—</strong><span>database size</span></div>
+        <p id="connection-status" class="connection-label">Checking connection…</p>
+      </section>
+      <section class="archive-shell">
+        <aside class="page-browser" aria-label="Archived pages">
+          <form id="search-form" class="search-form">
+            <label class="sr-only" for="search">Search archive</label
+            ><input
+              id="search"
+              type="search"
+              placeholder="Search text, title or URL"
+              autocomplete="off"
+            /><button class="button small" type="submit">Search</button>
+          </form>
+          <label class="filter-label" for="domain">Site</label
+          ><select id="domain">
+            <option value="">All sites</option>
+          </select>
+          <div class="list-heading"><span id="result-count">Loading pages…</span></div>
+          <div id="page-list" class="page-list" aria-live="polite">
+            <p class="empty-state">Loading archive…</p>
+          </div>
+          <div class="pagination">
+            <button id="previous" class="button small" disabled>← Previous</button
+            ><span id="page-range">—</span
+            ><button id="next" class="button small" disabled>Next →</button>
+          </div>
+        </aside>
+        <section class="document-panel" aria-label="Page content">
+          <div id="detail-empty" class="detail-empty">
+            <span class="empty-symbol" aria-hidden="true">▤</span>
+            <h2>Keep important pages close</h2>
+            <p>Select a page to read accumulated text or open a specific version.</p>
+            <p class="help">
+              To get started, open a site and enable recording using the PageVault icon.
+            </p>
+          </div>
+          <div id="detail" hidden>
+            <header class="document-heading">
+              <div class="document-heading-top">
+                <p id="detail-host" class="eyebrow"></p>
+                <button id="delete-page" class="button danger small">Delete page</button>
+              </div>
+              <h2 id="detail-title"></h2>
+              <div id="detail-link" class="source-link"></div>
+              <p id="detail-meta" class="help"></p>
+              <div class="document-actions">
+                <div class="segmented" role="group" aria-label="View mode">
+                  <button id="view-accumulated" class="selected" aria-pressed="true">
+                    All blocks</button
+                  ><button id="view-versions" aria-pressed="false">Versions</button>
+                </div>
+                <button id="export" class="button small">Export JSON ↓</button>
+              </div>
+            </header>
+            <div id="version-bar" class="version-bar" hidden>
+              <label for="version-select">Capture</label
+              ><select id="version-select"></select
+              ><button id="more-versions" class="button small" hidden>More versions</button>
+            </div>
+            <div id="view-note" class="view-note"></div>
+            <div id="capture-warnings" class="notice warning" hidden></div>
+            <article id="blocks" class="archive-content"></article>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

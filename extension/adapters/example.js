@@ -7,10 +7,16 @@
   'use strict';
   const ENABLED = false;
   globalThis.PageVaultExtractor.registerAdapter({
-    id:'example',
-    matches({url}) { return ENABLED && new URL(url).hostname === 'forum.example.org'; },
-    extract({document,url}) {
-      return {platform:'example-forum', thread_id:document.querySelector('[data-thread-id]')?.getAttribute('data-thread-id') || '', pathname:new URL(url).pathname};
-    }
+    id: 'example',
+    matches({ url }) {
+      return ENABLED && new URL(url).hostname === 'forum.example.org';
+    },
+    extract({ document, url }) {
+      return {
+        platform: 'example-forum',
+        thread_id: document.querySelector('[data-thread-id]')?.getAttribute('data-thread-id') || '',
+        pathname: new URL(url).pathname,
+      };
+    },
   });
 })();

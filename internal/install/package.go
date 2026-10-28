@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 // CheckPackagePayload checks archive collisions without opening a database or writing files.

@@ -13,10 +13,10 @@ import (
 	"runtime"
 	"strings"
 
-	"pagevault.local/pagevault/internal/buildinfo"
-	"pagevault.local/pagevault/internal/install"
-	"pagevault.local/pagevault/internal/mcpserver"
-	"pagevault.local/pagevault/internal/native"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/install"
+	"github.com/akarazhev/pagevault/internal/mcpserver"
+	"github.com/akarazhev/pagevault/internal/native"
 )
 
 func main() {

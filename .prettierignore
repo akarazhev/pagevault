@@ -1,0 +1,7 @@
+node_modules/
+.test-artifacts/
+.superpowers/
+dist/
+bin/
+tests/fixtures/
+THIRD_PARTY_NOTICES.md

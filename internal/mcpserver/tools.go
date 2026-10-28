@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"pagevault.local/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/archive"
 )
 
 type handler struct{ store *archive.Store }

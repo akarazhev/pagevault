@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 // registeredDatabase discovers the active archive without executing the old

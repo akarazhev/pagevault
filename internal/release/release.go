@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"pagevault.local/pagevault/internal/artifact"
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/artifact"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 // Options controls release creation. Root defaults to the current directory.
@@ -254,8 +254,8 @@ func validate(root string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains("\n"+string(b), "\nmodule pagevault.local/pagevault\n") {
-		return fmt.Errorf("go.mod must declare module pagevault.local/pagevault")
+	if !strings.Contains("\n"+string(b), "\nmodule github.com/akarazhev/pagevault\n") {
+		return fmt.Errorf("go.mod must declare module github.com/akarazhev/pagevault")
 	}
 	return nil
 }

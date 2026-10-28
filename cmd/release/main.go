@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/signal"
 
-	"pagevault.local/pagevault/internal/buildinfo"
-	"pagevault.local/pagevault/internal/release"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/release"
 )
 
 func main() {

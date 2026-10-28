@@ -1,6 +1,7 @@
 const UNAVAILABLE = 'SQLite helper unavailable. Check the installation: ';
 const INVALID_RESPONSE = 'Invalid response from the local helper.';
-const READ_TIMEOUT = 'The local helper did not respond within 20 seconds. The capture remains queued.';
+const READ_TIMEOUT =
+  'The local helper did not respond within 20 seconds. The capture remains queued.';
 
 // One instance belongs to one background worker. Requests share a lazy native
 // session; the host keeps its SQLite connection until the actual port closes.
@@ -22,7 +23,7 @@ export function createNativeClient(runtime, hostName, options = {}) {
   function connect() {
     if (session) return session;
     const generation = { port: runtime.connectNative(hostName) };
-    generation.port.onMessage.addListener(response => {
+    generation.port.onMessage.addListener((response) => {
       if (session !== generation) return;
       const entry = pending.get(response?.id);
       // Unknown IDs include late responses to reads that already timed out.

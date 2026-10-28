@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/akarazhev/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/install"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"pagevault.local/pagevault/internal/archive"
-	"pagevault.local/pagevault/internal/buildinfo"
-	"pagevault.local/pagevault/internal/install"
 )
 
 func TestBuildRequiresExplicitSigningMode(t *testing.T) {

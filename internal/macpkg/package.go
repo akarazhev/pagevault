@@ -12,8 +12,8 @@ import (
 	"runtime"
 	"strings"
 
-	"pagevault.local/pagevault/internal/artifact"
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/artifact"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 type Options struct {

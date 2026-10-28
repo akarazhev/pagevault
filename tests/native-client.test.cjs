@@ -4,13 +4,25 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 async function factory() {
-  try { return (await import(pathToFileURL(path.resolve(__dirname, '../extension/lib/native-client.js')))).createNativeClient; }
-  catch (error) { assert.fail(`Required native transport module unavailable: ${error.message}`); }
+  try {
+    return (
+      await import(pathToFileURL(path.resolve(__dirname, '../extension/lib/native-client.js')))
+    ).createNativeClient;
+  } catch (error) {
+    assert.fail(`Required native transport module unavailable: ${error.message}`);
+  }
 }
 
 function event() {
   const listeners = [];
-  return { addListener(listener) { listeners.push(listener); }, emit(value) { for (const listener of listeners) listener(value); } };
+  return {
+    addListener(listener) {
+      listeners.push(listener);
+    },
+    emit(value) {
+      for (const listener of listeners) listener(value);
+    },
+  };
 }
 function harness(options = {}) {
   const ports = [];
@@ -22,14 +34,33 @@ function harness(options = {}) {
     connectNative(hostName) {
       if (runtime.connectError) throw runtime.connectError;
       const port = {
-        hostName, sent: [], disconnectCalls: 0,
-        onMessage: event(), onDisconnect: event(),
-        postMessage(message) { if (port.sendError) throw port.sendError; port.sent.push(message); },
-        disconnect() { port.disconnectCalls++; port.onDisconnect.emit(); },
-        reply(index, data = {}, ok = true) { port.onMessage.emit({ id: port.sent[index].id, ok, ...(ok ? { data } : { error: { message: data } }) }); },
+        hostName,
+        sent: [],
+        disconnectCalls: 0,
+        onMessage: event(),
+        onDisconnect: event(),
+        postMessage(message) {
+          if (port.sendError) throw port.sendError;
+          port.sent.push(message);
+        },
+        disconnect() {
+          port.disconnectCalls++;
+          port.onDisconnect.emit();
+        },
+        reply(index, data = {}, ok = true) {
+          port.onMessage.emit({
+            id: port.sent[index].id,
+            ok,
+            ...(ok ? { data } : { error: { message: data } }),
+          });
+        },
         close(message) {
           runtime.lastError = message ? { message } : undefined;
-          try { port.onDisconnect.emit(); } finally { runtime.lastError = undefined; }
+          try {
+            port.onDisconnect.emit();
+          } finally {
+            runtime.lastError = undefined;
+          }
         },
       };
       ports.push(port);
@@ -37,14 +68,27 @@ function harness(options = {}) {
     },
   };
   return {
-    ports, timers, runtime,
+    ports,
+    timers,
+    runtime,
     options: {
       randomUUID: () => `request-${++nextId}`,
-      setTimeout(callback, delay) { const timer = ++nextTimer; timers.set(timer, { callback, delay }); return timer; },
-      clearTimeout(timer) { timers.delete(timer); },
+      setTimeout(callback, delay) {
+        const timer = ++nextTimer;
+        timers.set(timer, { callback, delay });
+        return timer;
+      },
+      clearTimeout(timer) {
+        timers.delete(timer);
+      },
       ...options,
     },
-    expireReads() { for (const [id, timer] of [...timers]) { timers.delete(id); timer.callback(); } },
+    expireReads() {
+      for (const [id, timer] of [...timers]) {
+        timers.delete(id);
+        timer.callback();
+      }
+    },
   };
 }
 async function setup(options) {
@@ -52,7 +96,7 @@ async function setup(options) {
   const h = harness(options);
   return { ...h, client: createNativeClient(h.runtime, 'com.pagevault.host', h.options) };
 }
-const turn = () => new Promise(resolve => setImmediate(resolve));
+const turn = () => new Promise((resolve) => setImmediate(resolve));
 
 test('native client lazily reuses one port for mixed sequential and concurrent requests', async () => {
   const h = await setup();
@@ -106,7 +150,10 @@ test('actual disconnect rejects all pending and reconnects only when next reques
   const h = await setup();
   const read = h.client.request({ type: 'stats' });
   const save = h.client.request({ type: 'capture.save', capture: {} });
-  const failures = [assert.rejects(read, /SQLite helper unavailable.*host exited/), assert.rejects(save, /host exited/)];
+  const failures = [
+    assert.rejects(read, /SQLite helper unavailable.*host exited/),
+    assert.rejects(save, /host exited/),
+  ];
   h.ports[0].close('host exited');
   await Promise.all(failures);
   assert.equal(h.timers.size, 0);
@@ -126,7 +173,14 @@ test('stale generation messages and disconnects cannot settle a replacement requ
   await rejected;
   let settled = false;
   const current = h.client.request({ type: 'pages.delete', page_id: 2 });
-  current.then(() => { settled = true; }, () => { settled = true; });
+  current.then(
+    () => {
+      settled = true;
+    },
+    () => {
+      settled = true;
+    },
+  );
   h.ports[0].reply(0, { stale: true });
   h.ports[0].close('late old disconnect');
   await turn();
@@ -145,8 +199,14 @@ test('read timeout expires only that read while save and deletion await actual r
   const read = h.client.request({ type: 'pages.list' });
   const expired = assert.rejects(read, /did not respond within 20 seconds/);
   let saves = 0;
-  const save = h.client.request({ type: 'capture.save', capture: {} }).then(data => { saves++; return data; });
-  const deletion = h.client.request({ type: 'pages.delete', page_id: 5 }).then(data => { saves++; return data; });
+  const save = h.client.request({ type: 'capture.save', capture: {} }).then((data) => {
+    saves++;
+    return data;
+  });
+  const deletion = h.client.request({ type: 'pages.delete', page_id: 5 }).then((data) => {
+    saves++;
+    return data;
+  });
   assert.equal(h.timers.size, 1);
   assert.equal([...h.timers.values()][0].delay, 20000);
   h.expireReads();
@@ -172,7 +232,10 @@ test('postMessage exception cleans only its request and keeps in-flight mutation
   const save = h.client.request({ type: 'capture.save', capture: {} });
   const port = h.ports[0];
   port.sendError = new Error('cannot serialize message');
-  await assert.rejects(h.client.request({ type: 'stats' }), /SQLite helper unavailable.*cannot serialize message/);
+  await assert.rejects(
+    h.client.request({ type: 'stats' }),
+    /SQLite helper unavailable.*cannot serialize message/,
+  );
   assert.equal(h.timers.size, 0);
   assert.equal(port.disconnectCalls, 0);
   delete port.sendError;
@@ -187,7 +250,10 @@ test('postMessage exception cleans only its request and keeps in-flight mutation
 test('connectNative synchronous failure rejects clearly and permits a later lazy retry', async () => {
   const h = await setup();
   h.runtime.connectError = new Error('host not installed');
-  await assert.rejects(h.client.request({ type: 'ping' }), /SQLite helper unavailable.*host not installed/);
+  await assert.rejects(
+    h.client.request({ type: 'ping' }),
+    /SQLite helper unavailable.*host not installed/,
+  );
   assert.equal(h.timers.size, 0);
   delete h.runtime.connectError;
   const retry = h.client.request({ type: 'ping' });
@@ -195,9 +261,16 @@ test('connectNative synchronous failure rejects clearly and permits a later lazy
   assert.deepEqual(await retry, { ready: true });
 });
 
-test('native invalid request errors retain their code for durable rejection',async()=>{
-  const h=await setup();
-  const request=h.client.request({type:'capture.save'});
-  h.ports[0].onMessage.emit({id:h.ports[0].sent[0].id,ok:false,error:{code:'invalid_request',message:'Invalid capture'}});
-  await assert.rejects(request,error=>error.code==='invalid_request' && error.message==='Invalid capture');
+test('native invalid request errors retain their code for durable rejection', async () => {
+  const h = await setup();
+  const request = h.client.request({ type: 'capture.save' });
+  h.ports[0].onMessage.emit({
+    id: h.ports[0].sent[0].id,
+    ok: false,
+    error: { code: 'invalid_request', message: 'Invalid capture' },
+  });
+  await assert.rejects(
+    request,
+    (error) => error.code === 'invalid_request' && error.message === 'Invalid capture',
+  );
 });

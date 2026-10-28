@@ -1,4 +1,4 @@
-import {connectionState} from '../lib/connection.js';
+import { connectionState } from '../lib/connection.js';
 export const $ = (selector, parent = document) => parent.querySelector(selector);
 export function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -7,13 +7,15 @@ export function el(tag, className, text) {
   return node;
 }
 export async function send(type, args = {}) {
-  if (!globalThis.chrome?.runtime?.sendMessage) throw new Error('Open this page from the installed PageVault extension.');
-  const response = await chrome.runtime.sendMessage({type, ...args});
-  if (!response?.ok) throw new Error(response?.error || 'The extension did not respond. Try again.');
+  if (!globalThis.chrome?.runtime?.sendMessage)
+    throw new Error('Open this page from the installed PageVault extension.');
+  const response = await chrome.runtime.sendMessage({ type, ...args });
+  if (!response?.ok)
+    throw new Error(response?.error || 'The extension did not respond. Try again.');
   return response.data;
 }
-export const native = (type, args = {}) => send('native', {request: {type, ...args}});
-export const errorText = error => error?.message || String(error);
+export const native = (type, args = {}) => send('native', { request: { type, ...args } });
+export const errorText = (error) => error?.message || String(error);
 export function notice(node, message = '', kind = 'info') {
   node.textContent = message;
   node.className = `notice ${kind}`;
@@ -24,7 +26,9 @@ export function date(value) {
   const d = new Date(value);
   return Number.isNaN(d.valueOf()) ? String(value) : d.toLocaleString('en-US');
 }
-export function number(value) { return Number(value || 0).toLocaleString('en-US'); }
+export function number(value) {
+  return Number(value || 0).toLocaleString('en-US');
+}
 export function bytes(value) {
   const n = Number(value || 0);
   if (n < 1024) return `${n} B`;
@@ -32,7 +36,12 @@ export function bytes(value) {
   return `${(n / 1048576).toFixed(1)} MB`;
 }
 export function safeUrl(value) {
-  try { const u = new URL(String(value)); return ['http:', 'https:'].includes(u.protocol) ? u.href : null; } catch { return null; }
+  try {
+    const u = new URL(String(value));
+    return ['http:', 'https:'].includes(u.protocol) ? u.href : null;
+  } catch {
+    return null;
+  }
 }
 export function externalLink(url, label = url) {
   const href = safeUrl(url);
@@ -45,30 +54,53 @@ export function externalLink(url, label = url) {
 }
 export async function readChunked(type, args, onProgress = () => {}) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    let offset = 0, total = null, documentHash = null;
+    let offset = 0,
+      total = null,
+      documentHash = null;
     const chunks = [];
     for (;;) {
-      const data = await native(type, {...args, offset, chunk_size:120000});
-      if (typeof data?.json_chunk !== 'string' || data.offset !== offset || !Number.isInteger(data.total_chars) || data.total_chars < 0) throw new Error('The helper returned an invalid archive chunk.');
+      const data = await native(type, { ...args, offset, chunk_size: 120000 });
+      if (
+        typeof data?.json_chunk !== 'string' ||
+        data.offset !== offset ||
+        !Number.isInteger(data.total_chars) ||
+        data.total_chars < 0
+      )
+        throw new Error('The helper returned an invalid archive chunk.');
       const hash = data.document_hash ?? null;
       if (total !== null && (data.total_chars !== total || hash !== documentHash)) {
         // Never concatenate chunks from different archive revisions, even at equal lengths.
-        if (attempt === 2) throw new Error('The archive keeps changing while reading. Retry after recording finishes.');
+        if (attempt === 2)
+          throw new Error(
+            'The archive keeps changing while reading. Retry after recording finishes.',
+          );
         break;
       }
-      total = data.total_chars; documentHash = hash;
+      total = data.total_chars;
+      documentHash = hash;
       chunks.push(data.json_chunk);
       onProgress(data.next_offset ?? total, total);
       if (data.done) {
-        try { return JSON.parse(chunks.join('')); } catch { throw new Error('Could not read archive JSON.'); }
+        try {
+          return JSON.parse(chunks.join(''));
+        } catch {
+          throw new Error('Could not read archive JSON.');
+        }
       }
-      if (!Number.isInteger(data.next_offset) || data.next_offset <= offset || data.next_offset > total) throw new Error('Archive reading stopped: invalid offset.');
+      if (
+        !Number.isInteger(data.next_offset) ||
+        data.next_offset <= offset ||
+        data.next_offset > total
+      )
+        throw new Error('Archive reading stopped: invalid offset.');
       offset = data.next_offset;
     }
   }
 }
 export function downloadJSON(value, filename) {
-  const blob = new Blob([JSON.stringify(value, null, 2)], {type:'application/json;charset=utf-8'});
+  const blob = new Blob([JSON.stringify(value, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
   const url = URL.createObjectURL(blob);
   const a = el('a');
   a.href = url;
@@ -95,7 +127,9 @@ export function renderBlocks(blocks, target) {
     let node;
     const text = typeof b.text === 'string' ? b.text : '';
     switch (b.type) {
-      case 'heading': node = el(`h${Math.max(2, Math.min(6, Number(b.level) || 2))}`, '', text); break;
+      case 'heading':
+        node = el(`h${Math.max(2, Math.min(6, Number(b.level) || 2))}`, '', text);
+        break;
       case 'code': {
         node = el('div', 'code-block');
         if (b.language) node.append(el('div', 'code-language', b.language));
@@ -120,7 +154,8 @@ export function renderBlocks(blocks, target) {
             if (Array.isArray(richBlocks) && richBlocks.length) renderBlocks(richBlocks, td);
             else {
               const cell = row[c];
-              td.textContent = cell == null ? '' : typeof cell === 'object' ? JSON.stringify(cell) : String(cell);
+              td.textContent =
+                cell == null ? '' : typeof cell === 'object' ? JSON.stringify(cell) : String(cell);
             }
             tr.append(td);
           }
@@ -135,27 +170,44 @@ export function renderBlocks(blocks, target) {
         for (const item of Array.isArray(b.items) ? b.items : []) {
           const li = el('li');
           if (Array.isArray(item?.blocks) && item.blocks.length) renderBlocks(item.blocks, li);
-          else li.textContent = typeof item === 'object' ? (item?.text ?? JSON.stringify(item)) : String(item ?? '');
+          else
+            li.textContent =
+              typeof item === 'object' ? (item?.text ?? JSON.stringify(item)) : String(item ?? '');
           node.append(li);
         }
         break;
       }
-      case 'image': case 'media': {
+      case 'image':
+      case 'media': {
         node = el('section', 'media-reference');
-        node.append(el('span', 'eyebrow', b.type === 'image' ? 'Image · link' : `${b.kind || 'Media'} · link`));
+        node.append(
+          el(
+            'span',
+            'eyebrow',
+            b.type === 'image' ? 'Image · link' : `${b.kind || 'Media'} · link`,
+          ),
+        );
         if (b.alt || b.text) node.append(el('p', '', b.alt || text));
         if (b.src) node.append(externalLink(b.src));
         if (b.poster) node.append(metaLine('Poster', b.poster));
         node.append(el('small', 'muted', 'Media files are not downloaded automatically.'));
         break;
       }
-      case 'link': node = el('p'); node.append(externalLink(b.url, text || b.url)); break;
-      case 'paragraph': case 'text': node = el('p', 'preserve-lines', text); break;
-      default: node = el('pre', 'unknown-block', JSON.stringify(b, null, 2));
+      case 'link':
+        node = el('p');
+        node.append(externalLink(b.url, text || b.url));
+        break;
+      case 'paragraph':
+      case 'text':
+        node = el('p', 'preserve-lines', text);
+        break;
+      default:
+        node = el('pre', 'unknown-block', JSON.stringify(b, null, 2));
     }
     if (Array.isArray(b.links) && b.type !== 'link') {
       const links = el('div', 'block-links');
-      for (const link of b.links) if (link?.url) links.append(externalLink(link.url, link.text || link.url));
+      for (const link of b.links)
+        if (link?.url) links.append(externalLink(link.url, link.text || link.url));
       if (links.childNodes.length) {
         const wrap = el('div');
         wrap.append(node, links);

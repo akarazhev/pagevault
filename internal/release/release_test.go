@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 func project(t *testing.T) string {
@@ -22,7 +22,7 @@ func project(t *testing.T) string {
 	root := t.TempDir()
 	for name, data := range map[string]string{
 		"README.md": "release", "docs/VERIFICATION.md": "verified",
-		"go.mod":                  "module pagevault.local/pagevault\n\ngo 1.26.0\n",
+		"go.mod":                  "module github.com/akarazhev/pagevault\n\ngo 1.26.0\n",
 		"extension/manifest.json": fmt.Sprintf(`{"version":%q}`, buildinfo.Version),
 		"cmd/pagevault/main.go":   "package main", "cmd/release/main.go": "package main",
 	} {

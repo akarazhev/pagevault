@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"strings"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 // Options selects the browser and installation paths. Platform and Home are

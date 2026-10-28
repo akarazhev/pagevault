@@ -14,9 +14,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/akarazhev/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"pagevault.local/pagevault/internal/archive"
-	"pagevault.local/pagevault/internal/buildinfo"
 )
 
 func fixture(t *testing.T) (*archive.Store, *mcp.ClientSession, context.Context) {

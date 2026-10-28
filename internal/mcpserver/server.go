@@ -9,9 +9,9 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/akarazhev/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"pagevault.local/pagevault/internal/archive"
-	"pagevault.local/pagevault/internal/buildinfo"
 )
 
 // Serve handles one newline-delimited JSON-RPC session. Native Messaging uses a

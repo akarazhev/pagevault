@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"pagevault.local/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/archive"
 )
 
 const maxDataBytes = 32 * 1024

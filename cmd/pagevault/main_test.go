@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 func TestDatabaseConfigPrecedence(t *testing.T) {

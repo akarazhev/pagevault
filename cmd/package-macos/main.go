@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/signal"
 
-	"pagevault.local/pagevault/internal/macpkg"
+	"github.com/akarazhev/pagevault/internal/macpkg"
 )
 
 func main() {

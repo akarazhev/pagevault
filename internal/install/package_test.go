@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pagevault.local/pagevault/internal/archive"
-	"pagevault.local/pagevault/internal/buildinfo"
+	"github.com/akarazhev/pagevault/internal/archive"
+	"github.com/akarazhev/pagevault/internal/buildinfo"
 )
 
 func TestPackagePreflightRejectsUnselectedRegisteredArchiveAliases(t *testing.T) {
