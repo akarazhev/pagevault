@@ -170,6 +170,24 @@ func TestNodeVersionPinShipsWithRelease(t *testing.T) {
 	}
 }
 
+func TestMCPAndDistributionDocsShipWithRelease(t *testing.T) {
+	root := project(t)
+	for _, name := range []string{"MCP.md", "DISTRIBUTION.md"} {
+		put(t, root, "docs/"+name, "document "+name)
+	}
+	output := filepath.Join(root, "dist", "source.zip")
+	if err := Run(context.Background(), Options{Root: root, Output: output, SourceOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	files := archive(t, output)
+	for _, name := range []string{"MCP.md", "DISTRIBUTION.md"} {
+		f := files["pagevault/docs/"+name]
+		if f == nil || content(t, f) != "document "+name {
+			t.Fatalf("missing release document %s", name)
+		}
+	}
+}
+
 func TestSkipBuildRequiresEveryTargetAndChecksums(t *testing.T) {
 	root := project(t)
 	out := filepath.Join(root, "dist/release.zip")
