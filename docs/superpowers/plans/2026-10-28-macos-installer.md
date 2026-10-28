@@ -58,10 +58,10 @@
 
 **Interfaces:** Pure connection-state and platform helpers drive existing status rendering; consume ping version/schema/DB path, expose ready/unavailable/incompatible/update states.
 
-- [ ] Add failing unit/browser tests for missing/ready/older/newer/incompatible helpers, malicious text, OS detection failure, stable HTTPS download links and failed/repeated checks recovering.
-- [ ] Implement the download/install/check flow, helper version/DB/error display, manual platform choice and existing Windows/Linux script fallback without changing permissions or queue behavior.
-- [ ] Run `npm test` and `npm run check`; expected PASS with explicit existing Linux skips on macOS. Inspect desktop/mobile screenshots from synthetic fixtures.
-- [ ] Commit `feat: guide helper installation and connection`.
+- [x] Add failing unit/browser tests for missing/ready/older/newer/incompatible helpers, malicious text, OS detection failure, stable HTTPS download links and failed/repeated checks recovering.
+- [x] Implement the download/install/check flow, helper version/DB/error display, manual platform choice and existing Windows/Linux script fallback without changing permissions or queue behavior.
+- [x] Run `npm test` and `npm run check`; expected PASS with explicit existing Linux skips on macOS. Inspect desktop/mobile screenshots from synthetic fixtures.
+- [x] Commit `feat: guide helper installation and connection`.
 
 ### Task 4: Store artifacts and release verification
 

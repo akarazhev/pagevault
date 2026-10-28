@@ -1,4 +1,4 @@
-import {$, send, notice, errorText, hostSummary, date, bytes} from './common.js';
+import {$, send, notice, errorText, hostSummary, hostConnection, date, bytes} from './common.js';
 let current = null;
 let busy = false;
 const message = $('#message');
@@ -14,11 +14,12 @@ function render(status) {
   $('#toggle-site').textContent = tab?.enabled ? 'Отключить' : 'Разрешить запись';
   $('#toggle-site').disabled = busy || !tab?.supported;
   $('#capture-now').disabled = busy || !tab?.supported;
-  $('#host-dot').classList.toggle('online', !!status.host?.connected);
+  const connection = hostConnection(status);
+  $('#host-dot').classList.toggle('online', connection.usable);
   $('#host-status').textContent = hostSummary(status);
   $('#host-error').textContent = status.host?.error || status.lastError || '';
   $('#host-error').hidden = !$('#host-error').textContent;
-  $('#setup-link').hidden = !!status.host?.connected;
+  $('#setup-link').hidden = connection.kind === 'ready';
   $('#last-saved').textContent = status.lastSavedAt ? `Последняя запись: ${date(status.lastSavedAt)}` : 'Сохранённые страницы останутся на вашем компьютере.';
   $('#queue-count').textContent = status.pendingCount || 0;
   $('#queue-size').textContent = status.pendingCount ? `${bytes(status.queueBytes)} · ждут записи в SQLite` : 'Все снимки доставлены';

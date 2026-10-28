@@ -1,3 +1,4 @@
+import {connectionState} from '../lib/connection.js';
 export const $ = (selector, parent = document) => parent.querySelector(selector);
 export function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -166,5 +167,8 @@ export function renderBlocks(blocks, target) {
   target.append(fragment);
 }
 export function hostSummary(status) {
-  return status.host?.connected ? `SQLite подключена · помощник ${status.host.version || '1.0'}` : 'Нет связи с локальным помощником';
+  return hostConnection(status).label;
+}
+export function hostConnection(status) {
+  return connectionState(status?.host, globalThis.chrome?.runtime?.getManifest?.()?.version);
 }
