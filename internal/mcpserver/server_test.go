@@ -166,6 +166,9 @@ func assemble(t *testing.T, cs *mcp.ClientSession, ctx context.Context, name str
 		}
 		hash = r["document_hash"].(string)
 		chunk := r["text"].(string)
+		if r["done"] != (r["next_offset"] == nil) {
+			t.Fatal("missing or inconsistent completion marker", r["done"])
+		}
 		if !utf8.ValidString(chunk) {
 			t.Fatal("split UTF-8 character")
 		}
@@ -236,6 +239,28 @@ func TestAccumulatedDocumentHashPreventsMixingBrowserCommits(t *testing.T) {
 	current := assemble(t, cs, ctx, "get_page", map[string]any{"page_id": pageID})
 	if !strings.Contains(current, "old block") || !strings.Contains(current, "new block") {
 		t.Fatal("lost accumulated blocks")
+	}
+}
+
+func TestVersionContinuationRequiresHashWhenDeletedIDsAreReused(t *testing.T) {
+	w, cs, ctx := fixture(t)
+	pageID, captureID := save(t, w, capture(strings.Repeat("original", 200)))
+	first := call(t, cs, ctx, "get_version", map[string]any{"capture_id": captureID, "max_chars": 100})
+	if _, err := w.Delete(pageID); err != nil {
+		t.Fatal(err)
+	}
+	_, replacementID := save(t, w, capture(strings.Repeat("replacement", 200)))
+	if replacementID != captureID {
+		t.Fatal("fixture did not reuse SQLite INTEGER PRIMARY KEY")
+	}
+	for _, args := range []map[string]any{
+		{"capture_id": captureID, "offset": first["next_offset"]},
+		{"capture_id": captureID, "offset": first["next_offset"], "document_hash": first["document_hash"]},
+	} {
+		r, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_version", Arguments: args})
+		if err != nil || !r.IsError {
+			t.Fatal("unsafe continuation of a replaced capture", r, err)
+		}
 	}
 }
 

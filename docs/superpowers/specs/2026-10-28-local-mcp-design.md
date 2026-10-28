@@ -18,6 +18,8 @@ Open an existing schema-1 SQLite archive with `mode=ro` and `query_only`. Do not
 
 Document tools return JSON chunks with Unicode-code-point offsets, next offset, total length, SHA-256 and done. Default chunk size 8,000, maximum 16,000 code points; actual chunks and list payloads are bounded to 32 KiB before MCP encoding. Lists default to 20 items, maximum 100. Every tool is read-only and closed-world; no arbitrary SQL, writes, filesystem paths or website navigation are exposed as tool parameters. Archived website content is untrusted data.
 
+Implementation clarification: both document tools require the preceding document hash for continuation, because SQLite may reuse a deleted capture ID even though the stored capture itself is immutable.
+
 ## CLI and compatibility
 
 Resolve database selection in the existing order: `--db`, PAGEVAULT_DB, adjacent pagevault.json, OS default. MCP stdout contains only protocol messages; errors go to stderr. Preserve Native Messaging framing and the SQLite schema. Release version 1.2.0 identifies the new capability; preserve the extension ID.

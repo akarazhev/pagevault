@@ -47,6 +47,7 @@ type DocumentChunk struct {
 	CaptureID    int64  `json:"capture_id,omitempty"`
 	Format       string `json:"format"`
 	Text         string `json:"text"`
+	Done         bool   `json:"done"`
 	Offset       int64  `json:"offset"`
 	NextOffset   *int64 `json:"next_offset"`
 	TotalChars   int64  `json:"total_chars"`
@@ -70,6 +71,7 @@ func chunkDocument(raw string, r DocumentChunk, offset, count int64, expectedHas
 	}
 	setText := func(n int64) {
 		r.Text = string(runes[offset : offset+n])
+		r.Done = offset+n == r.TotalChars
 		r.NextOffset = nil
 		if offset+n < r.TotalChars {
 			next := offset + n

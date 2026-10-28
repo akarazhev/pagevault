@@ -38,7 +38,7 @@ type VersionInput struct {
 	CaptureID    int64  `json:"capture_id" jsonschema:"Positive capture ID from list_versions."`
 	Offset       *int64 `json:"offset,omitempty" jsonschema:"Nonnegative Unicode code point offset; default 0. Follow next_offset."`
 	MaxChars     *int64 `json:"max_chars,omitempty" jsonschema:"Maximum Unicode code points, 1 to 16000; default 8000. Byte limits can shorten the chunk."`
-	DocumentHash string `json:"document_hash,omitempty" jsonschema:"Optional SHA-256 from a previous chunk to verify the document."`
+	DocumentHash string `json:"document_hash,omitempty" jsonschema:"SHA-256 from the previous chunk; required when offset is greater than 0. Restart from 0 if the document changed."`
 }
 
 func number(value *int64, fallback, min, max int64, name string) (int64, error) {
@@ -126,6 +126,9 @@ func (h handler) getVersion(ctx context.Context, in VersionInput) (DocumentChunk
 	o, n, err := chunkParams(in.Offset, in.MaxChars)
 	if err != nil {
 		return DocumentChunk{}, err
+	}
+	if o > 0 && in.DocumentHash == "" {
+		return DocumentChunk{}, fmt.Errorf("document_hash is required for get_version continuation; restart with offset 0")
 	}
 	raw, err := h.store.CaptureJSONContext(ctx, in.CaptureID)
 	if err != nil {
