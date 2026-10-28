@@ -159,3 +159,42 @@ test('preserves boundaries between adjacent block-containing links', () => fixtu
   assert.deepEqual(c.blocks.map(b=>b.text).filter(Boolean),['One card','Two card']);
   assert.deepEqual(c.blocks.filter(b=>b.type==='link').map(b=>b.url),[origin+'/one',origin+'/two']);
 }, '<a href="/one"><div>One card</div></a><a href="/two"><div>Two card</div></a>'));
+test('rich table text uses the shared budget once and leaves room for following content', () => fixture(async page => {
+  const c=await page.evaluate(()=>PageVaultExtractor.extract(document,{maxTextChars:10,saveHtml:false}));
+  assert.equal(c.blocks.find(b=>b.type==='table').rows[0][0], 'hello');
+  assert.equal(c.blocks.find(b=>b.type==='table').cell_blocks[0][0][0].text, 'hello');
+  assert.ok(c.blocks.some(b=>b.text==='after'));
+  assert.equal(c.stats.text_chars,10);
+}, '<table><tr><td><a href="/x">hello</a></td></tr></table><p>after</p>'));
+test('HTML serialization stops creating attributes when the HTML budget is exhausted', () => fixture(async page => {
+  const result=await page.evaluate(()=>{
+    document.body.innerHTML=Array.from({length:1000},()=>'<span title="'+ 'x'.repeat(500) +'">x</span>').join('');
+    const original=Element.prototype.setAttribute;let calls=0;
+    Element.prototype.setAttribute=function(...args){calls++;return original.apply(this,args);};
+    try { const capture=PageVaultExtractor.extract(document,{maxHtmlChars:1000}); return {calls,html:capture.html,warnings:capture.warnings}; }
+    finally { Element.prototype.setAttribute=original; }
+  });
+  assert.ok(result.html.length<=1000);assert.ok(result.warnings.some(w=>w.code==='max_html_chars'));
+  assert.ok(result.calls<20,`created ${result.calls} attributes`);
+}));
+test('content observer releases roots from removed and navigated same-origin frames', () => fixture(async page => {
+  await page.evaluate(()=>{
+    const active=new Set(), Native=MutationObserver; globalThis.activeObservers=active;
+    globalThis.MutationObserver=class extends Native { observe(root,options){super.observe(root,options);active.add(this);} disconnect(){super.disconnect();active.delete(this);} };
+    globalThis.chrome={runtime:{id:'fixture',lastError:null,sendMessage(message,cb){cb({ok:true,data:message.type==='capture.config'?{enabled:true,settings:{captureIntervalSeconds:300,debounceMs:10000}}:{}});},onMessage:{addListener(){}}}};
+  });
+  await page.addScriptTag({path:path.join(root,'extension/content.js')});
+  const result=await page.evaluate(async()=>{
+    const wait=()=>new Promise(r=>setTimeout(r,100));
+    await wait();const baseline=activeObservers.size;
+    const frame=document.createElement('iframe');frame.srcdoc='<p>first</p>';document.body.append(frame);
+    await wait();const added=activeObservers.size;
+    frame.srcdoc='<p>second</p>';await wait();const navigated=activeObservers.size;
+    frame.remove();await wait();return {baseline,added,navigated,removed:activeObservers.size};
+  });
+  assert.ok(result.added>result.baseline);assert.equal(result.navigated,result.added);assert.equal(result.removed,result.baseline);
+}));
+test('HTML budget retains ordinary text that fits while accounting for escaped text', () => fixture(async page => {
+  const c=await page.evaluate(()=>{document.body.textContent='x'.repeat(800);return PageVaultExtractor.extract(document,{maxHtmlChars:1000});});
+  assert.match(c.html,/x{800}/);assert.ok(c.html.length<=1000);
+}));

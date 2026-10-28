@@ -14,7 +14,7 @@
       chrome.runtime.sendMessage(message, response => {
         const error = chrome.runtime.lastError;
         if (error) { reject(new Error(error.message)); return; }
-        if (!response?.ok) { reject(new Error(response?.error || 'Нет ответа расширения.')); return; }
+        if (!response?.ok) { reject(new Error(response?.error || 'No response from the extension.')); return; }
         resolve(response.data);
       });
     });
@@ -79,7 +79,7 @@
       }
     }
     visit(document.documentElement);
-    for (const [root, observer] of observers) if (root !== document.documentElement && !root.isConnected) { observer.disconnect(); observers.delete(root); }
+    for (const [root, observer] of observers) if (!visited.has(root)) { observer.disconnect(); observers.delete(root); }
   }
   function stop() {
     enabled = false; clearScheduled(); clearInterval(intervalTimer); clearInterval(navigationTimer);

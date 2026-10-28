@@ -5,13 +5,13 @@ const message = $('#message');
 function render(status) {
   current = status;
   const tab = status.activeTab;
-  let hostname = 'Страница недоступна';
+  let hostname = 'Page unavailable';
   if (tab?.supported) { try { hostname = new URL(tab.url).hostname; } catch {} }
   $('#site-name').textContent = hostname;
-  $('#site-url').textContent = tab?.supported ? tab.origin : 'Откройте обычную страницу сайта (http или https).';
-  $('#site-state').textContent = tab?.enabled ? 'Автозапись включена' : 'Автозапись выключена';
+  $('#site-url').textContent = tab?.supported ? tab.origin : 'Open an HTTP or HTTPS page.';
+  $('#site-state').textContent = tab?.enabled ? 'Automatic recording on' : 'Automatic recording off';
   $('#site-state').classList.toggle('teal-text', !!tab?.enabled);
-  $('#toggle-site').textContent = tab?.enabled ? 'Отключить' : 'Разрешить запись';
+  $('#toggle-site').textContent = tab?.enabled ? 'Disable' : 'Enable recording';
   $('#toggle-site').disabled = busy || !tab?.supported;
   $('#capture-now').disabled = busy || !tab?.supported;
   const connection = hostConnection(status);
@@ -20,9 +20,9 @@ function render(status) {
   $('#host-error').textContent = status.host?.error || status.lastError || '';
   $('#host-error').hidden = !$('#host-error').textContent;
   $('#setup-link').hidden = connection.kind === 'ready';
-  $('#last-saved').textContent = status.lastSavedAt ? `Последняя запись: ${date(status.lastSavedAt)}` : 'Сохранённые страницы останутся на вашем компьютере.';
+  $('#last-saved').textContent = status.lastSavedAt ? `Last saved: ${date(status.lastSavedAt)}` : 'Saved pages stay on your computer.';
   $('#queue-count').textContent = status.pendingCount || 0;
-  $('#queue-size').textContent = status.pendingCount ? `${bytes(status.queueBytes)} · ждут записи в SQLite` : 'Все снимки доставлены';
+  $('#queue-size').textContent = status.pendingCount ? `${bytes(status.queueBytes)} · ${status.rejectedCount ? `${status.rejectedCount} rejected; see settings` : 'waiting to be saved to SQLite'}` : 'All captures delivered';
   $('#retry-queue').disabled = busy;
 }
 async function refresh() {
@@ -39,18 +39,18 @@ $('#toggle-site').addEventListener('click', () => {
   const tab = current?.activeTab;
   if (!tab?.supported || busy) return;
   if (tab.enabled) {
-    action(() => send('site.disable', {origin:tab.origin}), 'Автоматическая запись для сайта отключена.');
+    action(() => send('site.disable', {origin:tab.origin}), 'Automatic recording disabled for this site.');
     return;
   }
   // Keep permission request in the original user gesture; do not await status first.
   const site = new URL(tab.origin);
   const permission = chrome.permissions.request({origins:[`${site.protocol}//${site.hostname}/*`]});
   action(async () => {
-    if (!await permission) throw new Error('Разрешение не выдано. Запись для сайта не включена.');
+    if (!await permission) throw new Error('Permission was not granted. Recording was not enabled.');
     await send('site.enable', {origin:tab.origin});
-  }, 'Запись включена. Содержимое страницы будет сохраняться автоматически.');
+  }, 'Recording enabled. Page content will be saved automatically.');
 });
-$('#capture-now').addEventListener('click', () => action(() => send('capture.now', {tabId:current?.activeTab?.id}), 'Снимок поставлен в очередь. Он появится в архиве после записи в SQLite.'));
-$('#retry-queue').addEventListener('click', () => action(() => send('queue.flush'), 'Повторная доставка выполнена. Проверьте состояние очереди.'));
+$('#capture-now').addEventListener('click', () => action(() => send('capture.now', {tabId:current?.activeTab?.id}), 'Capture queued. It will appear in the archive after being saved to SQLite.'));
+$('#retry-queue').addEventListener('click', () => action(() => send('queue.flush'), 'Delivery retry completed. Check the queue status.'));
 refresh();
 setInterval(() => { if (!busy) refresh(); }, 5000);

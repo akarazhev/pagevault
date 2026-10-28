@@ -81,3 +81,9 @@ test('delivery keeps a snapshot when host rejects and removes it only after comm
   assert.equal(pending.length,0);
   assert.equal(succeeded.sent,1);
 });
+
+test('capture rejects a URL exceeding the native codepoint limit', async () => {
+  const { validateCaptureSource } = await mod('policy.js');
+  const url = 'https://example.org/' + 'a'.repeat(65536);
+  assert.throws(() => validateCaptureSource({schema_version:1,url,blocks:[]},{tab:{id:1},url,frameId:0},{enabledOrigins:['https://example.org']}), /URL/);
+});

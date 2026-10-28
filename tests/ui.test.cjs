@@ -68,7 +68,7 @@ test('repeated Next clicks keep the last valid page while a list request is in f
     assert.equal(await page.locator('#next').isDisabled(),true);
     await page.evaluate(()=>releaseList());
     await page.waitForFunction(()=>!document.querySelector('#page-list').hasAttribute('aria-busy'));
-    assert.equal(await page.locator('.page-item').count(),1);assert.match(await page.locator('#page-range').innerText(),/^26–26 из 26$/);
+    assert.equal(await page.locator('.page-item').count(),1);assert.match(await page.locator('#page-range').innerText(),/^26–26 of 26$/);
     assert.deepEqual(await page.evaluate(()=>fixture.offsets),[0,25]);
   }finally{await page.close();}
 });
@@ -78,9 +78,9 @@ test('a shrinking total recovers from an out-of-range page instead of showing on
     await page.locator('#next').click();await page.evaluate(()=>{fixture.total=10;releaseList();});
     await page.waitForFunction(()=>fixture.offsets.length>=3);
     await page.evaluate(()=>releaseList());await page.waitForFunction(()=>!document.querySelector('#page-list').hasAttribute('aria-busy'));
-    assert.equal(await page.locator('.page-item').count(),10);assert.match(await page.locator('#page-range').innerText(),/^1–10 из 10$/);
+    assert.equal(await page.locator('.page-item').count(),10);assert.match(await page.locator('#page-range').innerText(),/^1–10 of 10$/);
     assert.deepEqual(await page.evaluate(()=>fixture.offsets),[0,25,0]);
-    assert.doesNotMatch(await page.locator('#page-list').innerText(),/Пока здесь пусто/);
+    assert.doesNotMatch(await page.locator('#page-list').innerText(),/Nothing here yet/);
   }finally{await page.close();}
 });
 test('failed list requests disable stale pagination and show an explicit unavailable state',async()=>{
@@ -89,8 +89,8 @@ test('failed list requests disable stale pagination and show an explicit unavail
     await page.locator('#next').click();await page.evaluate(()=>{fixture.fail=true;releaseList();});
     await page.waitForFunction(()=>!document.querySelector('#page-list').hasAttribute('aria-busy'));
     assert.equal(await page.locator('#next').isDisabled(),true);assert.equal(await page.locator('#previous').isDisabled(),true);
-    assert.match(await page.locator('#page-range').innerText(),/Недоступно/);assert.match(await page.locator('#message').innerText(),/Controlled native failure/);
-    assert.doesNotMatch(await page.locator('#page-list').innerText(),/Пока здесь пусто/);
+    assert.match(await page.locator('#page-range').innerText(),/Unavailable/);assert.match(await page.locator('#message').innerText(),/Controlled native failure/);
+    assert.doesNotMatch(await page.locator('#page-list').innerText(),/Nothing here yet/);
   }finally{await page.close();}
 });
 test('chunk reader discards same-length changed revisions and restarts without corrupting Unicode',async()=>{
@@ -128,7 +128,7 @@ test('chunk reader stops after two restarts when the archive keeps changing',asy
       }}};
       try{await readChunked('pages.export',{page_id:1});return{success:true,starts};}catch(e){return{error:e.message,starts};}
     });
-    assert.match(result.error,/измен/i);assert.equal(result.starts,3);
+    assert.match(result.error,/changing/i);assert.equal(result.starts,3);
   }finally{await page.close();}
 });
 test('bounded page summaries display the URL preview and restore the full safe source link from export',async()=>{
@@ -157,4 +157,23 @@ test('bounded page summaries display the URL preview and restore the full safe s
     await page.locator('.page-item').click();await page.waitForFunction(()=>document.querySelector('#blocks').textContent==='body');
     assert.equal(await page.locator('#detail-link a').getAttribute('href'),'https://example.org/full-original?state=long');
   }finally{await page.close();}
+});
+test('domain selector follows paginated hostnames and supports a legacy response',async()=>{
+  const page=await browser.newPage();
+  try {
+    await page.addInitScript(()=>{
+      window.domainOffsets=[];
+      window.chrome={runtime:{sendMessage:async message=>{
+        if(message.type==='status')return {ok:true,data:{pendingCount:0}};
+        const r=message.request;
+        if(r.type==='stats')return {ok:true,data:{pages:0,captures:0,blocks:0,db_bytes:0}};
+        if(r.type==='pages.list')return {ok:true,data:{items:[],total:0}};
+        if(r.type==='pages.domains') { domainOffsets.push(r.offset);return {ok:true,data:r.offset===0?{items:[{hostname:'one.example',page_count:1}],next_offset:1}:{items:[{hostname:'two.example',page_count:2}]}}; }
+      }}};
+    });
+    await page.goto(server.url+'/extension/ui/archive.html');
+    await page.waitForFunction(()=>document.querySelectorAll('#domain option').length===3,null,{timeout:3000});
+    assert.deepEqual(await page.locator('#domain option').evaluateAll(options=>options.map(o=>o.value)),['','one.example','two.example']);
+    assert.deepEqual(await page.evaluate(()=>domainOffsets),[0,1]);
+  } finally {await page.close();}
 });

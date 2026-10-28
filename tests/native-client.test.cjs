@@ -91,7 +91,7 @@ test('native host failure and malformed correlated reply reject only their reque
   const failure = h.client.request({ type: 'pages.get' });
   const failed = assert.rejects(failure, /Нет такой страницы/);
   const malformed = h.client.request({ type: 'stats' });
-  const invalid = assert.rejects(malformed, /Некорректный ответ локального помощника/);
+  const invalid = assert.rejects(malformed, /Invalid response from the local helper/);
   const mutation = h.client.request({ type: 'capture.save', capture: {} });
   h.ports[0].reply(0, 'Нет такой страницы', false);
   h.ports[0].onMessage.emit({ id: h.ports[0].sent[1].id, data: {} });
@@ -106,7 +106,7 @@ test('actual disconnect rejects all pending and reconnects only when next reques
   const h = await setup();
   const read = h.client.request({ type: 'stats' });
   const save = h.client.request({ type: 'capture.save', capture: {} });
-  const failures = [assert.rejects(read, /Помощник SQLite недоступен.*host exited/), assert.rejects(save, /host exited/)];
+  const failures = [assert.rejects(read, /SQLite helper unavailable.*host exited/), assert.rejects(save, /host exited/)];
   h.ports[0].close('host exited');
   await Promise.all(failures);
   assert.equal(h.timers.size, 0);
@@ -121,7 +121,7 @@ test('actual disconnect rejects all pending and reconnects only when next reques
 test('stale generation messages and disconnects cannot settle a replacement request', async () => {
   const h = await setup({ randomUUID: () => 'same-id-across-generations' });
   const old = h.client.request({ type: 'ping' });
-  const rejected = assert.rejects(old, /Помощник SQLite недоступен/);
+  const rejected = assert.rejects(old, /SQLite helper unavailable/);
   h.ports[0].close();
   await rejected;
   let settled = false;
@@ -143,7 +143,7 @@ test('stale generation messages and disconnects cannot settle a replacement requ
 test('read timeout expires only that read while save and deletion await actual replies', async () => {
   const h = await setup();
   const read = h.client.request({ type: 'pages.list' });
-  const expired = assert.rejects(read, /не ответил за 20 секунд/);
+  const expired = assert.rejects(read, /did not respond within 20 seconds/);
   let saves = 0;
   const save = h.client.request({ type: 'capture.save', capture: {} }).then(data => { saves++; return data; });
   const deletion = h.client.request({ type: 'pages.delete', page_id: 5 }).then(data => { saves++; return data; });
@@ -172,7 +172,7 @@ test('postMessage exception cleans only its request and keeps in-flight mutation
   const save = h.client.request({ type: 'capture.save', capture: {} });
   const port = h.ports[0];
   port.sendError = new Error('cannot serialize message');
-  await assert.rejects(h.client.request({ type: 'stats' }), /Помощник SQLite недоступен.*cannot serialize message/);
+  await assert.rejects(h.client.request({ type: 'stats' }), /SQLite helper unavailable.*cannot serialize message/);
   assert.equal(h.timers.size, 0);
   assert.equal(port.disconnectCalls, 0);
   delete port.sendError;
@@ -187,10 +187,17 @@ test('postMessage exception cleans only its request and keeps in-flight mutation
 test('connectNative synchronous failure rejects clearly and permits a later lazy retry', async () => {
   const h = await setup();
   h.runtime.connectError = new Error('host not installed');
-  await assert.rejects(h.client.request({ type: 'ping' }), /Помощник SQLite недоступен.*host not installed/);
+  await assert.rejects(h.client.request({ type: 'ping' }), /SQLite helper unavailable.*host not installed/);
   assert.equal(h.timers.size, 0);
   delete h.runtime.connectError;
   const retry = h.client.request({ type: 'ping' });
   h.ports[0].reply(0, { ready: true });
   assert.deepEqual(await retry, { ready: true });
+});
+
+test('native invalid request errors retain their code for durable rejection',async()=>{
+  const h=await setup();
+  const request=h.client.request({type:'capture.save'});
+  h.ports[0].onMessage.emit({id:h.ports[0].sent[0].id,ok:false,error:{code:'invalid_request',message:'Invalid capture'}});
+  await assert.rejects(request,error=>error.code==='invalid_request' && error.message==='Invalid capture');
 });

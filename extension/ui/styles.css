@@ -5,3 +5,5 @@
 
 /* Helper connection and installation steps. */
 .connection-guidance{margin-top:12px!important}.connection-actions{flex-wrap:wrap;gap:10px 15px}.platform-field{max-width:330px;margin-top:22px}.setup-steps .button{margin-top:6px}.setup-result{padding:12px 14px;border-radius:6px;background:var(--teal-soft);color:var(--teal-dark);margin-top:12px!important}.settings-section #host-error{white-space:pre-wrap;overflow-wrap:anywhere}.platform-field select{max-width:100%}@media(max-width:760px){#connection .section-heading{align-items:flex-start;flex-direction:column;gap:12px}.connection-actions .button{white-space:normal}.setup-steps{padding-left:18px}.setup-steps .button{max-width:100%;white-space:normal}}
+
+.rejected-row{flex-wrap:wrap;gap:12px}.rejected-row>div:first-child{min-width:0;flex:1 1 180px}.rejected-row .inline-actions{flex-wrap:wrap;gap:8px}

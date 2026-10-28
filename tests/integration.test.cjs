@@ -233,3 +233,13 @@ nativeTest('archive UI downloads the Go-backed SQLite page as valid JSON',async(
   await archive.waitForFunction(()=>!document.querySelector('#version-bar').hidden&&document.querySelector('#version-select').options.length>0);
   assert.deepEqual(errors,[]);
 });
+
+nativeTest('content scripts cannot list, export, retry, or discard queued captures',async()=>{
+  const tabId=await archive.evaluate(async url=>(await chrome.tabs.query({})).find(tab=>tab.url===url).id,site.url());
+  const results=await archive.evaluate(async tabId=>{
+    const [{result}]=await chrome.scripting.executeScript({target:{tabId},func:async()=>{
+      return Promise.all(['queue.list','queue.export','queue.retry','queue.discard'].map(type=>chrome.runtime.sendMessage({type,id:'synthetic',revision:1})));
+    }});return result;
+  },tabId);
+  assert.equal(results.length,4);assert.ok(results.every(result=>result?.ok===false));
+});

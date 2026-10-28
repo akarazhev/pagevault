@@ -53,8 +53,8 @@
     const visited = new WeakSet();
     function enter(node, depth) {
       if (!node || exhausted || visited.has(node)) return false;
-      if (depth > MAX_DEPTH) { warn('max_depth', 'Превышена глубина DOM; часть вложенного содержимого пропущена.'); return false; }
-      if (++nodeCount > MAX_NODES) { exhausted = true; warn('max_nodes', 'Превышено число узлов DOM; снимок сокращён.'); return false; }
+      if (depth > MAX_DEPTH) { warn('max_depth', 'DOM depth limit reached; some nested content was skipped.'); return false; }
+      if (++nodeCount > MAX_NODES) { exhausted = true; warn('max_nodes', 'DOM node limit reached; capture truncated.'); return false; }
       visited.add(node);
       return true;
     }
@@ -62,7 +62,7 @@
     function budget(block) {
       function text(value) {
         const result = sliceSafe(String(value || ''), maxTextChars - chars);
-        if (result.length < String(value || '').length) { warn('max_text_chars', 'Превышен лимит текста; снимок сокращён.'); exhausted = true; }
+        if (result.length < String(value || '').length) { warn('max_text_chars', 'Text limit reached; capture truncated.'); exhausted = true; }
         chars += result.length;
         return result;
       }
@@ -70,14 +70,16 @@
       if (typeof b.text === 'string') b.text = text(b.text);
       if (typeof b.alt === 'string') b.alt = text(b.alt);
       if (b.items) b.items = b.items.map(text);
-      if (b.rows) b.rows = b.rows.map(row => row.map(text));
-      if (b.cell_blocks) b.cell_blocks = b.cell_blocks.map(row => row.map(cell => cell.map(budget)));
+      if (b.cell_blocks) {
+        b.cell_blocks = b.cell_blocks.map(row => row.map(cell => cell.map(budget)));
+        b.rows = b.cell_blocks.map(row => row.map(cell => cell.filter(part => ['text','paragraph','heading','link'].includes(part.type)).map(part => part.text).filter(Boolean).join(' ')));
+      } else if (b.rows) b.rows = b.rows.map(row => row.map(text));
       // Link labels are already represented in the owning block text/items.
       if (b.links) b.links = b.links.map(link => ({text:sliceSafe(link.text, 8192),url:link.url}));
       return b;
     }
     function output(block) {
-      if (capture.blocks.length >= maxBlocks) { exhausted = true; warn('max_blocks', 'Превышен лимит блоков; снимок сокращён.'); return; }
+      if (capture.blocks.length >= maxBlocks) { exhausted = true; warn('max_blocks', 'Block limit reached; capture truncated.'); return; }
       const bounded = budget(block);
       if (bounded.text === '' && !['code','link'].includes(bounded.type)) return;
       capture.blocks.push(bounded);
@@ -85,15 +87,15 @@
     const baseFor = node => node.ownerDocument?.baseURI || document.baseURI;
     function inlineText(node, depth = 0, state = {nodes:0}) {
       if (!node) return '';
-      if (depth > MAX_DEPTH) { warn('max_depth', 'Превышена глубина DOM; часть вложенного содержимого пропущена.'); return ''; }
-      if (++state.nodes > MAX_NODES) { warn('max_nodes', 'Превышено число узлов DOM; снимок сокращён.'); return ''; }
+      if (depth > MAX_DEPTH) { warn('max_depth', 'DOM depth limit reached; some nested content was skipped.'); return ''; }
+      if (++state.nodes > MAX_NODES) { warn('max_nodes', 'DOM node limit reached; capture truncated.'); return ''; }
       if (node.nodeType === 3) return node.nodeValue || '';
       if (node.nodeType !== 1 && node.nodeType !== 11) return '';
       if (SKIP.has(node.tagName) || node.isContentEditable) return '';
       if (node.tagName === 'BR') return '\n';
       const parts = [];
       for (const child of node.childNodes) {
-        if (state.nodes >= MAX_NODES) { warn('max_nodes', 'Превышено число узлов DOM; снимок сокращён.'); break; }
+        if (state.nodes >= MAX_NODES) { warn('max_nodes', 'DOM node limit reached; capture truncated.'); break; }
         parts.push(inlineText(child, depth + 1, state));
       }
       return parts.join('');
@@ -173,11 +175,11 @@
             // Touch location to distinguish a cross-origin Window from an accessible frame.
             void doc.location.href;
             flow(doc.body || doc.documentElement, sink, 'text', undefined, currentDepth + 1);
-          } catch (_) { warn('inaccessible_frame', 'Недоступный iframe пропущен (другой origin, sandbox или загрузка).'); }
+          } catch (_) { warn('inaccessible_frame', 'An inaccessible iframe was skipped (cross-origin, sandboxed, or loading).'); }
           return;
         }
         if (['CANVAS','OBJECT','EMBED'].includes(tag)) {
-          boundary(); warn('unreadable_media','Canvas и встроенные объекты не преобразуются в текст.');
+          boundary(); warn('unreadable_media','Canvas and embedded objects are not converted to text.');
           if (tag !== 'CANVAS') sink({type:'media',kind:tag.toLowerCase(),src:safeUrl(node.getAttribute('data') || node.getAttribute('src'),baseFor(node))});
           flow(node,sink,'text',undefined,currentDepth + 1); return;
         }
@@ -259,7 +261,7 @@
         if (json.length > 65536) throw new RangeError('Adapter metadata exceeds 65536 characters');
         capture.metadata.site_data = {...capture.metadata.site_data,...JSON.parse(json)};
         capture.source.adapter = adapter.id;
-      } catch (_) { warn('adapter_error', 'Ошибка адаптера; общий DOM-снимок сохранён.'); }
+      } catch (_) { warn('adapter_error', 'Adapter error; the generic DOM capture was retained.'); }
     }
     if (options.saveHtml !== false) capture.html = sanitizedHtml(document,maxHtmlChars,warn);
     capture.stats = {block_count:capture.blocks.length,text_chars:chars};
@@ -269,34 +271,62 @@
     const target = source.implementation.createHTMLDocument('');
     let nodes = 0, remaining = maxChars;
     const seen = new WeakSet();
+    function boundedValue(value, allowance, attribute = false) {
+      let end = 0, cost = 0;
+      for (const char of value) {
+        const size = char === '\u00a0' ? 6 : char === '&' ? 5 : char === '<' || char === '>' ? 4 : attribute && char === '"' ? 6 : char.length;
+        if (cost + size > allowance) break;
+        cost += size; end += char.length;
+      }
+      return {value:value.slice(0,end), cost};
+    }
     function clone(node,depth) {
       if (!node || seen.has(node)) return null;
       seen.add(node);
-      if (++nodes > MAX_NODES) { warn('max_nodes','Превышено число узлов DOM; снимок сокращён.'); return null; }
-      if (depth > MAX_DEPTH) { warn('max_depth','Превышена глубина DOM; часть вложенного содержимого пропущена.'); return null; }
-      if (remaining <= 0) { warn('max_html_chars','Превышен лимит HTML; исходник сокращён.'); return null; }
+      if (++nodes > MAX_NODES) { warn('max_nodes','DOM node limit reached; capture truncated.'); return null; }
+      if (depth > MAX_DEPTH) { warn('max_depth','DOM depth limit reached; some nested content was skipped.'); return null; }
+      if (remaining <= 0) { warn('max_html_chars','HTML limit reached; source truncated.'); return null; }
       if (node.nodeType === 3) {
-        const text = sliceSafe(node.nodeValue || '', remaining); remaining -= text.length;
-        if (text.length < (node.nodeValue || '').length) warn('max_html_chars','Превышен лимит HTML; исходник сокращён.');
+        const bounded = boundedValue(node.nodeValue || '', remaining);
+        const text = bounded.value; remaining -= bounded.cost;
+        if (text.length < (node.nodeValue || '').length) warn('max_html_chars','HTML limit reached; source truncated.');
         return target.createTextNode(text);
       }
       if (node.nodeType !== 1 && node.nodeType !== 11) return null;
       const tag = node.tagName?.toLowerCase();
       if (tag && (['script','style','noscript','template','iframe','frame','object','embed','input','textarea','select','option','datalist','base','meta','link'].includes(tag) || node.isContentEditable)) return null;
-      const result = tag ? target.createElement(HTML_TAGS.has(tag) ? tag : 'div') : target.createDocumentFragment();
+      const safeTag = tag && (HTML_TAGS.has(tag) ? tag : 'div');
+      if (tag) {
+        remaining -= safeTag.length * 2 + 5;
+        if (remaining <= 0) { warn('max_html_chars','HTML limit reached; source truncated.'); return null; }
+      }
+      const result = tag ? target.createElement(safeTag) : target.createDocumentFragment();
+      function attribute(name, value) {
+        // Reserve for escaping each character, delimiters, and the attribute name.
+        const room = remaining - name.length - 4;
+        if (room <= 0) { remaining = 0; warn('max_html_chars','HTML limit reached; source truncated.'); return; }
+        const bounded = boundedValue(value, room, true);
+        remaining -= name.length + 4 + bounded.cost;
+        result.setAttribute(name, bounded.value);
+        if (bounded.value.length < value.length) { remaining = 0; warn('max_html_chars','HTML limit reached; source truncated.'); }
+      }
       if (tag) {
         for (const attr of node.attributes) {
           const name = attr.name.toLowerCase();
-          if (['lang','dir','title','alt','colspan','rowspan','start','width','height','datetime'].includes(name)) result.setAttribute(name,sliceSafe(attr.value,8192));
+          if (['lang','dir','title','alt','colspan','rowspan','start','width','height','datetime'].includes(name)) attribute(name,sliceSafe(attr.value,8192));
           if (['href','src','poster'].includes(name)) {
-            const url = safeUrl(attr.value,node.ownerDocument.baseURI);
-            if (url) result.setAttribute(name,url);
+            const url = attr.value.length <= Math.min(8192, remaining) ? safeUrl(attr.value,node.ownerDocument.baseURI) : null;
+            if (url) attribute(name,url);
+            else if (attr.value.length > Math.min(8192, remaining)) warn('max_html_chars','HTML limit reached; source truncated.');
           }
+          if (remaining <= 0) break;
         }
-        if (tag === 'a') result.setAttribute('rel','noopener noreferrer');
-        if (['button','audio','video'].includes(tag)) result.setAttribute('disabled','');
+        if (tag === 'a') attribute('rel','noopener noreferrer');
+        if (['button','audio','video'].includes(tag)) attribute('disabled','');
       }
-      if (node.shadowRoot) {
+      if (node.shadowRoot && remaining <= 100) warn('max_html_chars','HTML limit reached; source truncated.');
+      if (node.shadowRoot && remaining > 100) {
+        remaining -= 100;
         const shadow = target.createElement('section'); shadow.setAttribute('data-pagevault-shadowroot','open');
         for (const child of node.shadowRoot.childNodes) { const c=clone(child,depth + 1); if(c) shadow.append(c); }
         result.append(shadow);
@@ -308,7 +338,7 @@
     }
     const root = clone(source.documentElement,0);
     const html = root?.outerHTML || '';
-    if (html.length > maxChars) warn('max_html_chars','Превышен лимит HTML; исходник сокращён.');
+    if (html.length > maxChars) warn('max_html_chars','HTML limit reached; source truncated.');
     return sliceSafe(html,maxChars);
   }
   globalThis.PageVaultExtractor = Object.freeze({extract,registerAdapter});

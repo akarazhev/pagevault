@@ -113,9 +113,9 @@ async function status() {
 }
 async function route(message, sender) {
   await ready;
-  if (!message || typeof message.type !== 'string') throw new Error('Некорректное сообщение.');
+  if (!message || typeof message.type !== 'string') throw new Error('Invalid message.');
   if (message.type === 'capture.config') {
-    if (!sender.tab || (sender.frameId ?? 0) !== 0) throw new Error('Недопустимый источник.');
+    if (!sender.tab || (sender.frameId ?? 0) !== 0) throw new Error('Invalid sender.');
     const state = await readState();
     return { enabled: state.enabledOrigins.includes(pageOrigin(sender.url)), settings: state.settings };
   }
@@ -129,11 +129,11 @@ async function route(message, sender) {
     void flushQueue().catch(error => chrome.storage.local.set({ lastError: error.message }));
     return result;
   }
-  if (!isExtensionPage(sender, chrome.runtime.getURL(''))) throw new Error('Команда доступна только интерфейсу расширения.');
+  if (!isExtensionPage(sender, chrome.runtime.getURL(''))) throw new Error('This command is available only to extension pages.');
   switch (message.type) {
     case 'status': return status();
     case 'native': {
-      if (!UI_NATIVE_COMMANDS.has(message.request?.type)) throw new Error('Недопустимая команда архива.');
+      if (!UI_NATIVE_COMMANDS.has(message.request?.type)) throw new Error('Invalid archive command.');
       if (message.request.type === 'pages.delete') return nativeWrite(async () => {
         const result = await nativeRequest(message.request);
         // Reserve the purge behind submissions already validating/enqueuing. New captures
@@ -146,10 +146,26 @@ async function route(message, sender) {
       return nativeRequest(message.request);
     }
     case 'queue.flush': return flushQueue();
+    case 'queue.list': return outbox.listRejected();
+    case 'queue.export': {
+      const capture = await outbox.getRevision(message.id, message.revision);
+      if (!capture) throw new Error('This queue revision no longer exists.');
+      return capture;
+    }
+    case 'queue.retry': {
+      const changed = await outbox.retry(message.id, message.revision);
+      if (changed) void flushQueue();
+      return { changed };
+    }
+    case 'queue.discard': {
+      await outbox.discard(message.id, message.revision);
+      await refreshBadge();
+      return outbox.getStats();
+    }
     case 'site.enable': {
       const origin = pageOrigin(message.origin);
-      if (!origin) throw new Error('Этот адрес не поддерживается.');
-      if (!(await chrome.permissions.contains({ origins: [permissionPattern(origin)] }))) throw new Error('Сначала разрешите доступ к этому сайту.');
+      if (!origin) throw new Error('This address is not supported.');
+      if (!(await chrome.permissions.contains({ origins: [permissionPattern(origin)] }))) throw new Error('First allow access to this site.');
       const state = await mutateState(state => ({ ...state, enabledOrigins: [...new Set([...state.enabledOrigins, origin])] }));
       await reconcileRegistrations();
       await notifyOrigin(origin, { type: 'capture.configure', enabled: true, settings: state.settings }, true);
@@ -157,7 +173,7 @@ async function route(message, sender) {
     }
     case 'site.disable': {
       const origin = pageOrigin(message.origin);
-      if (!origin) throw new Error('Некорректный адрес сайта.');
+      if (!origin) throw new Error('Invalid site address.');
       const state = await mutateState(state => ({ ...state, enabledOrigins: state.enabledOrigins.filter(value => value !== origin) }));
       await notifyOrigin(origin, { type: 'capture.stop' });
       await reconcileRegistrations();
@@ -167,7 +183,7 @@ async function route(message, sender) {
     case 'capture.now': {
       const tab = Number.isInteger(message.tabId) ? await chrome.tabs.get(message.tabId) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
       const origin = pageOrigin(tab?.url);
-      if (!origin) throw new Error('Откройте обычную веб-страницу HTTP или HTTPS.');
+      if (!origin) throw new Error('Open an HTTP or HTTPS web page.');
       const state = await readState();
       if (!state.enabledOrigins.includes(origin)) {
         const grants = await oneShots();
@@ -178,7 +194,7 @@ async function route(message, sender) {
       }
       await ensureContent(tab.id);
       const result = await chrome.tabs.sendMessage(tab.id, { type: 'capture.run', reason: 'manual', settings: state.settings }, { frameId: 0 });
-      if (!result?.ok) throw new Error(result?.error || 'Не удалось получить снимок страницы.');
+      if (!result?.ok) throw new Error(result?.error || 'Could not capture the page.');
       return { queued: true };
     }
     case 'settings.set': {
@@ -186,7 +202,7 @@ async function route(message, sender) {
       await Promise.allSettled(state.enabledOrigins.map(origin => notifyOrigin(origin, { type: 'capture.configure', enabled: true, settings: state.settings })));
       return state.settings;
     }
-    default: throw new Error('Неизвестная команда расширения.');
+    default: throw new Error('Unknown extension command.');
   }
 }
 

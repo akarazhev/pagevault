@@ -1,6 +1,6 @@
-const UNAVAILABLE = 'Помощник SQLite недоступен. Проверьте установку: ';
-const INVALID_RESPONSE = 'Некорректный ответ локального помощника.';
-const READ_TIMEOUT = 'Локальный помощник не ответил за 20 секунд. Снимок останется в очереди.';
+const UNAVAILABLE = 'SQLite helper unavailable. Check the installation: ';
+const INVALID_RESPONSE = 'Invalid response from the local helper.';
+const READ_TIMEOUT = 'The local helper did not respond within 20 seconds. The capture remains queued.';
 
 // One instance belongs to one background worker. Requests share a lazy native
 // session; the host keeps its SQLite connection until the actual port closes.
@@ -30,7 +30,9 @@ export function createNativeClient(runtime, hostName, options = {}) {
       if (typeof response.ok !== 'boolean') {
         finish(response.id, entry, new Error(INVALID_RESPONSE));
       } else if (!response.ok) {
-        finish(response.id, entry, new Error(response.error?.message || 'Ошибка локального архива.'));
+        const error = new Error(response.error?.message || 'Local archive error.');
+        error.code = response.error?.code;
+        finish(response.id, entry, error);
       } else {
         finish(response.id, entry, null, response.data);
       }
@@ -38,7 +40,7 @@ export function createNativeClient(runtime, hostName, options = {}) {
     generation.port.onDisconnect.addListener(() => {
       // lastError only exists during the browser's disconnect callback. Read it
       // even for an old port, but never invalidate a replacement generation.
-      const reason = runtime.lastError?.message || 'Соединение с локальным помощником закрыто.';
+      const reason = runtime.lastError?.message || 'The local helper connection closed.';
       if (session === generation) session = null;
       for (const [id, entry] of pending) {
         if (entry.generation === generation) finish(id, entry, new Error(UNAVAILABLE + reason));

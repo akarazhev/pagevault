@@ -27,7 +27,7 @@ function database() {
 
 export async function enqueue(capture) {
   const bytes = new TextEncoder().encode(JSON.stringify(capture)).length;
-  if (bytes > MAX_CAPTURE_BYTES) throw new Error('Снимок превышает 24 МиБ. Уменьшите лимит HTML или текста в настройках.');
+  if (bytes > MAX_CAPTURE_BYTES) throw new Error('Capture exceeds 24 MiB. Reduce the HTML or text limit in settings.');
   const id = await captureDigest(capture);
   const db = await database();
   return new Promise((resolve, reject) => {
@@ -35,7 +35,7 @@ export async function enqueue(capture) {
     const store = tx.objectStore('outbox'); const meta = tx.objectStore('meta');
     let result, failure;
     tx.oncomplete = () => resolve(result);
-    tx.onabort = tx.onerror = () => reject(failure || tx.error || new Error('Не удалось записать очередь.'));
+    tx.onabort = tx.onerror = () => reject(failure || tx.error || new Error('Could not write to the queue.'));
     const existingRequest = store.get(id);
     existingRequest.onsuccess = () => {
       const existing = existingRequest.result;
@@ -45,7 +45,7 @@ export async function enqueue(capture) {
         const pendingCount = totals.pendingCount + (existing ? 0 : 1);
         const queueBytes = totals.queueBytes - (existing?.bytes || 0) + bytes;
         if (pendingCount > MAX_ITEMS || queueBytes > MAX_BYTES) {
-          failure = new Error('Очередь заполнена (500 снимков или 128 МиБ). Подключите локальный помощник и повторите сохранение. Уже принятые снимки сохранены.');
+          failure = new Error('The queue is full (500 captures or 128 MiB). Connect the local helper and retry. Previously accepted captures are retained.');
           tx.abort(); return;
         }
         function write(lastCreatedAt) {
@@ -69,19 +69,19 @@ export async function enqueue(capture) {
   });
 }
 
-export async function peek(limit = 20) {
+export async function peek(limit = 20, { includeRejected = true } = {}) {
   const db = await database();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('outbox', 'readonly');
     const result = [];
     const request = tx.objectStore('outbox').index('createdAt').openCursor();
-    request.onsuccess = () => { const cursor = request.result; if (cursor && result.length < limit) { result.push(cursor.value); cursor.continue(); } };
+    request.onsuccess = () => { const cursor = request.result; if (cursor && result.length < limit) { if (includeRejected || !cursor.value.rejected) result.push(cursor.value); cursor.continue(); } };
     tx.oncomplete = () => resolve(result);
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function remove(id, revision) {
+export async function remove(id, revision, { rejectedOnly = false } = {}) {
   const db = await database();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['outbox', 'meta'], 'readwrite');
@@ -89,7 +89,7 @@ export async function remove(id, revision) {
     const request = store.get(id);
     request.onsuccess = () => {
       const item = request.result;
-      if (!item || item.revision !== revision) return;
+      if (!item || item.revision !== revision || (rejectedOnly && !item.rejected)) return;
       const totalsRequest = meta.get('totals');
       totalsRequest.onsuccess = () => {
         const totals = totalsRequest.result;
@@ -127,16 +127,16 @@ export async function removeUrl(url) {
       }
     };
     tx.oncomplete = () => resolve(removed);
-    tx.onabort = tx.onerror = () => reject(tx.error || new Error('Не удалось удалить снимки из очереди.'));
+    tx.onabort = tx.onerror = () => reject(tx.error || new Error('Could not remove captures from the queue.'));
   });
 }
 
-export async function markError(id, error) {
+export async function markError(id, revision, error, { permanent = false } = {}) {
   const db = await database();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('outbox', 'readwrite'); const store = tx.objectStore('outbox');
     const request = store.get(id);
-    request.onsuccess = () => { const item = request.result; if (item) store.put({ ...item, attempts: item.attempts + 1, error: String(error).slice(0, 1000) }); };
+    request.onsuccess = () => { const item = request.result; if (item && item.revision === revision) store.put({ ...item, attempts: (item.attempts || 0) + 1, error: String(error).slice(0, 1000), rejected: permanent }); };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
   });
 }
@@ -144,8 +144,46 @@ export async function markError(id, error) {
 export async function getStats() {
   const db = await database();
   return new Promise((resolve, reject) => {
-    const request = db.transaction('meta', 'readonly').objectStore('meta').get('totals');
-    request.onsuccess = () => resolve(request.result || { pendingCount: 0, queueBytes: 0 });
+    const tx = db.transaction(['outbox', 'meta'], 'readonly');
+    const totals = tx.objectStore('meta').get('totals');
+    let rejectedCount = 0;
+    const cursor = tx.objectStore('outbox').openCursor();
+    cursor.onsuccess = () => { if (cursor.result) { if (cursor.result.value.rejected) rejectedCount++; cursor.result.continue(); } };
+    tx.oncomplete = () => resolve({...((totals.result) || {pendingCount:0, queueBytes:0}), rejectedCount});
+    tx.onerror = () => reject(tx.error);
+  });
+}
+export async function listRejected() {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('outbox', 'readonly'); const result = [];
+    const request = tx.objectStore('outbox').index('createdAt').openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const item = cursor.value;
+      if (item.rejected) result.push({id:item.id, revision:item.revision, createdAt:item.createdAt, bytes:item.bytes, error:item.error, url:String(item.capture.url || '').slice(0, 2048), title:String(item.capture.title || '').slice(0, 500)});
+      cursor.continue();
+    };
+    tx.oncomplete = () => resolve(result); tx.onerror = () => reject(tx.error);
+  });
+}
+export async function getRevision(id, revision) {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('outbox', 'readonly').objectStore('outbox').get(id);
+    request.onsuccess = () => resolve(request.result?.revision === revision ? request.result.capture : null);
     request.onerror = () => reject(request.error);
   });
 }
+export async function retry(id, revision) {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('outbox', 'readwrite'); const store = tx.objectStore('outbox');
+    const request = store.get(id); let changed = false;
+    request.onsuccess = () => { const item = request.result; if (item && item.revision === revision && item.rejected) { store.put({...item, rejected:false, error:null}); changed = true; } };
+    tx.oncomplete = () => resolve(changed); tx.onerror = () => reject(tx.error);
+  });
+}
+
+export function discard(id, revision) { return remove(id, revision, {rejectedOnly:true}); }

@@ -7,9 +7,9 @@ export function el(tag, className, text) {
   return node;
 }
 export async function send(type, args = {}) {
-  if (!globalThis.chrome?.runtime?.sendMessage) throw new Error('Откройте эту страницу из установленного расширения PageVault.');
+  if (!globalThis.chrome?.runtime?.sendMessage) throw new Error('Open this page from the installed PageVault extension.');
   const response = await chrome.runtime.sendMessage({type, ...args});
-  if (!response?.ok) throw new Error(response?.error || 'Расширение не ответило. Попробуйте ещё раз.');
+  if (!response?.ok) throw new Error(response?.error || 'The extension did not respond. Try again.');
   return response.data;
 }
 export const native = (type, args = {}) => send('native', {request: {type, ...args}});
@@ -22,21 +22,21 @@ export function notice(node, message = '', kind = 'info') {
 export function date(value) {
   if (!value) return '—';
   const d = new Date(value);
-  return Number.isNaN(d.valueOf()) ? String(value) : d.toLocaleString();
+  return Number.isNaN(d.valueOf()) ? String(value) : d.toLocaleString('en-US');
 }
-export function number(value) { return Number(value || 0).toLocaleString(); }
+export function number(value) { return Number(value || 0).toLocaleString('en-US'); }
 export function bytes(value) {
   const n = Number(value || 0);
-  if (n < 1024) return `${n} Б`;
-  if (n < 1048576) return `${(n / 1024).toFixed(1)} КБ`;
-  return `${(n / 1048576).toFixed(1)} МБ`;
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
 }
 export function safeUrl(value) {
   try { const u = new URL(String(value)); return ['http:', 'https:'].includes(u.protocol) ? u.href : null; } catch { return null; }
 }
 export function externalLink(url, label = url) {
   const href = safeUrl(url);
-  if (!href) return el('span', 'break-text', label || 'Недоступная ссылка');
+  if (!href) return el('span', 'break-text', label || 'Unavailable link');
   const a = el('a', 'break-text', label || href);
   a.href = href;
   a.target = '_blank';
@@ -49,20 +49,20 @@ export async function readChunked(type, args, onProgress = () => {}) {
     const chunks = [];
     for (;;) {
       const data = await native(type, {...args, offset, chunk_size:120000});
-      if (typeof data?.json_chunk !== 'string' || data.offset !== offset || !Number.isInteger(data.total_chars) || data.total_chars < 0) throw new Error('Помощник вернул неверную часть архива.');
+      if (typeof data?.json_chunk !== 'string' || data.offset !== offset || !Number.isInteger(data.total_chars) || data.total_chars < 0) throw new Error('The helper returned an invalid archive chunk.');
       const hash = data.document_hash ?? null;
       if (total !== null && (data.total_chars !== total || hash !== documentHash)) {
         // Never concatenate chunks from different archive revisions, even at equal lengths.
-        if (attempt === 2) throw new Error('Архив продолжает изменяться во время чтения. Повторите загрузку после завершения записи.');
+        if (attempt === 2) throw new Error('The archive keeps changing while reading. Retry after recording finishes.');
         break;
       }
       total = data.total_chars; documentHash = hash;
       chunks.push(data.json_chunk);
       onProgress(data.next_offset ?? total, total);
       if (data.done) {
-        try { return JSON.parse(chunks.join('')); } catch { throw new Error('Не удалось прочитать JSON архива.'); }
+        try { return JSON.parse(chunks.join('')); } catch { throw new Error('Could not read archive JSON.'); }
       }
-      if (!Number.isInteger(data.next_offset) || data.next_offset <= offset || data.next_offset > total) throw new Error('Чтение архива остановилось: неверное смещение.');
+      if (!Number.isInteger(data.next_offset) || data.next_offset <= offset || data.next_offset > total) throw new Error('Archive reading stopped: invalid offset.');
       offset = data.next_offset;
     }
   }
@@ -86,7 +86,7 @@ function metaLine(label, value) {
 export function renderBlocks(blocks, target) {
   target.replaceChildren();
   if (!Array.isArray(blocks) || !blocks.length) {
-    target.append(el('p', 'empty-state', 'В этом представлении нет сохранённых блоков.'));
+    target.append(el('p', 'empty-state', 'There are no saved blocks in this view.'));
     return;
   }
   const fragment = document.createDocumentFragment();
@@ -142,11 +142,11 @@ export function renderBlocks(blocks, target) {
       }
       case 'image': case 'media': {
         node = el('section', 'media-reference');
-        node.append(el('span', 'eyebrow', b.type === 'image' ? 'Изображение · ссылка' : `${b.kind || 'Медиа'} · ссылка`));
+        node.append(el('span', 'eyebrow', b.type === 'image' ? 'Image · link' : `${b.kind || 'Media'} · link`));
         if (b.alt || b.text) node.append(el('p', '', b.alt || text));
         if (b.src) node.append(externalLink(b.src));
-        if (b.poster) node.append(metaLine('Обложка', b.poster));
-        node.append(el('small', 'muted', 'Медиафайлы не загружаются автоматически.'));
+        if (b.poster) node.append(metaLine('Poster', b.poster));
+        node.append(el('small', 'muted', 'Media files are not downloaded automatically.'));
         break;
       }
       case 'link': node = el('p'); node.append(externalLink(b.url, text || b.url)); break;
