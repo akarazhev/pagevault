@@ -23,6 +23,42 @@
 
 На macOS Intel замените каталог на `darwin-amd64`, на Linux — на `linux-amd64` или `linux-arm64`. На Windows используйте `windows-amd64/pagevault-host.exe` или `windows-arm64/pagevault-host.exe`; обратные слеши в JSON экранируются как `\\`.
 
+## Codex
+
+Добавьте сервер штатной командой Codex CLI, подставив абсолютные пути к программе и существующей базе:
+
+```bash
+codex mcp add pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
+codex mcp get pagevault --json
+```
+
+Команда сохраняет пользовательскую настройку в `~/.codex/config.toml`. Её эквивалент:
+
+```toml
+[mcp_servers.pagevault]
+command = "/absolute/path/PageVault/bin/darwin-arm64/pagevault-host"
+args = ["mcp", "--db", "/absolute/path/archive.sqlite3"]
+```
+
+Откройте новую сессию Codex и проверьте `pagevault` через `/mcp`. Затем попросите: «Через PageVault покажи сохранённые сайты и найди страницы о …». Настройка через CLI и формат TOML описаны в [официальной документации Codex](https://developers.openai.com/codex/mcp).
+
+## Claude Code
+
+Для доступа из разных проектов добавьте сервер в пользовательскую конфигурацию:
+
+```bash
+claude mcp add --transport stdio --scope user pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
+claude mcp get pagevault
+```
+
+Claude Code сохраняет эту запись в `~/.claude.json`; `mcp get` проверяет соединение с сервером. Откройте новую сессию `claude` и посмотрите `/mcp`. Для подключения только в текущем проекте вместо `--scope user` используйте `--scope local`. Формат и области действия описаны в [документации Claude Code](https://code.claude.com/docs/en/mcp).
+
+Оба клиента могут работать одновременно: каждый запускает свой MCP-процесс и читает ту же SQLite. Новые страницы продолжает записывать браузер. Личные абсолютные пути и конфигурации клиентов не требуется добавлять в репозиторий.
+
+Для проверки подключения достаточно списка инструментов. Запросы к архиву через облачные модели передают полученные URL и фрагменты провайдеру модели: OpenAI для Codex и Anthropic для обычного подключения Claude Code. Перед такой проверкой выберите подходящий архив; для проверки интеграции можно использовать отдельную искусственную базу.
+
+## Выбор базы и запуск процесса
+
 Можно выбрать установленную копию помощника вместо файла из комплекта. Порядок выбора SQLite совпадает с native-режимом:
 
 1. Явный `--db`.
