@@ -1,0 +1,88 @@
+# Production Hardening Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Resolve confirmed production defects, make PageVault English-only, add maintainable checks/support materials, and deliver a verified GitHub release.
+
+**Architecture:** Retain the existing local Go/SQLite host and JavaScript extension. Add small shared safety boundaries for archive recognition, protocol framing, queue rejection and paired artifact publication. CI tests the supported desktop OS families; packaged binaries remain runtime-independent of Go/Node.
+
+**Tech Stack:** Go 1.27.3, Node 26.12.1, npm 12.2.1, Playwright 1.64.1, existing MCP SDK/SQLite dependencies; pinned development-only formatting/lint/vulnerability tools and GitHub Actions.
+
+**Spec:** `docs/superpowers/specs/2026-10-28-production-hardening-design.md`
+
+## Global Constraints
+
+- English-only UI, messages and maintained documentation; multilingual synthetic data is test coverage, not a locale.
+- SQLite schema 1 and extension ID `ijkioljfdaaplhaldbdpabckkfcieiee` remain unchanged; preserve current archives/configuration and accepted queue entries.
+- Free GitHub Releases only; no paid signing/account/store work, telemetry or network daemon. v1.3.0 assets/tag remain untouched; next release 1.4.0.
+- Automated tests use temporary synthetic archives/homes/profiles only; never replace the real browser registration/archive or global client configurations.
+- TDD for behavioral fixes; do not add mirrored source-text tests for copy, configuration or prose. Run focused checks while iterating and the complete applicable suite before each task commit.
+- Work on `codex/production-hardening` in the authorized checkout; managed worktrees outside writable roots were already shown unusable in this session.
+
+## Review Focus
+
+- A late permanent error must not quarantine or delete a newer queue revision; pin this in Task 2.
+- Native domain pagination must preserve the exact filter value of long hostnames and shorten pages by bytes, not truncate identifiers; pin this in Task 1.
+- Empty vs foreign/incomplete SQLite must be distinguished before WAL/DDL; pin this in Task 1 with unchanged-file evidence.
+- Core package payload must protect archives for unselected browsers and symlink/hardlink aliases before replacement; pin this in Task 3.
+- Second-file publication failure must restore both prior artifacts, including symlink entries; failed rollback preserves/report backups. Pin this in Task 3; crash-atomic two-file replacement is not promised.
+
+---
+
+### Task 1: Archive and protocol safety
+
+**Files:** `internal/archive/{storage.go,readonly.go,schema_test.go,storage_test.go,readonly_test.go}`; new `internal/archive/schema.go`; `internal/native/{host.go,host_test.go}`; `internal/mcpserver/{server.go,server_test.go}` and new focused framing helpers/tests as needed; `cmd/pagevault/mcp_test.go` for portable process coverage.
+
+**Interfaces:** Produce `Store.DomainsPage(limit, offset int64) (map[string]any,error)` with `items`, `total`, `limit`, `offset`, `next_offset` (integer or null). Native `pages.domains` accepts default/max limit 200 and offset >=0; preserve exact `hostname` values and keep each response below 768 KiB by ending a page early. Existing `Domains()` may delegate for compatibility. Task 2 consumes `next_offset` and unchanged item shape.
+
+- [ ] Add failing tests that Open rejects nonempty foreign schema-0 and incomplete schema-1 archives without changing their bytes/journal/schema; retain valid existing schema-1/fresh/concurrent initialization tests.
+- [ ] Add failing native pagination tests traversing 4,800 long valid hostnames completely, a long exact filter value, and invalid limit/offset; every frame fits 1 MiB and pagination progresses by actual returned items.
+- [ ] Add raw-wire MCP regressions for page/capture ID 9007199254740993 in requests, structured results and text fallback; add a 65,575-byte frame after a 151-byte initialize plus exact-boundary, split-read and EOF cases.
+- [ ] Run regressions before changes; record expected RED. Implement conservative archive recognition before mutation, streaming/bounded native domain pages, SDK registration avoiding float64 normalization, and strict bounded line input ahead of SDK decoding. Retain tool schemas/defaults/validation, read-only behavior, cancellation and clean stdout.
+- [ ] Make question-mark filesystem tests Unix-only cases while using Unicode/space/#/% portable filenames on Windows. Run `go test -race ./...` and record all platform skips. Commit the task with RED/GREEN evidence in its report.
+
+### Task 2: English extension with durable recovery and bounded extraction
+
+**Files:** `extension/**` (all user-facing strings/lang/formatting); `tests/{core,connection,native-client,extractor,queue,ui,onboarding,integration}.test.cjs`; new focused capture-validation helpers/tests only where needed.
+
+**Interfaces:** Consume Task 1 native domain pagination. Extend outbox entries with a revision-scoped permanent rejection state without dropping existing v1 entries. `markError(id, revision, error, {permanent})` and explicit retry/discard operations must compare revisions; pending/rejected counts stay consistent in one IDB transaction. Delivery returns sent/rejected/error statistics and skips rejected entries, bounded by attempted items, while retryable transport errors stop the batch. Background exposes extension-page-only queue listing/retry/discard; options UI lists rejected captures with error and explicit controls. No content-script queue-management privilege.
+
+- [ ] Add RED regressions for a >65,536-codepoint URL rejected before enqueue; an existing permanently invalid entry followed by valid entries; IDB persistence across reopen; late rejection vs replacement revision; retry/discard accounting and authorization.
+- [ ] Add RED Chromium regressions for rich link table text at maxTextChars boundary with following content, removed/navigated same-origin iframes returning observed roots to baseline, and attribute-heavy HTML enforcing maxHtmlChars before large cloning/allocation.
+- [ ] Implement aligned validation, visible recovery preserving rejected data, revision-safe delivery and bounded processing. Fix shared table text accounting, observer discovery/lifecycle and bounded sanitized HTML construction. Paginate archive domain discovery using exact hostnames.
+- [ ] Translate every interface, warning/error and HTML lang to English; use English locale formatting. Keep multilingual fixture data for fidelity. Update UI assertions to English; do not test literal source copy.
+- [ ] Run `npm test`, `npm run check`; inspect English desktop/mobile UI with synthetic data, including rejected queue recovery. Commit with complete test/TDD evidence.
+
+### Task 3: Pre-payload installer protection and reliable artifacts
+
+**Files:** `internal/install/` new package-preflight helper/tests; `cmd/pagevault/{main.go,main_test.go}`; `internal/macpkg/{package.go,scripts.go,distribution.go,package_test.go}`; `internal/release/{release.go,release_test.go}`; new `internal/artifact/` pair publisher/tests; `cmd/package-macos/main.go`, `install.sh`, `install-windows.ps1`, `install-windows.cmd` for English copy.
+
+**Interfaces:** Produce read-only `install.CheckPackagePayload(home string) error`, exposed as CLI `package-preflight --home ABSOLUTE_HOME`. Check all browser manifests, active config paths and fallback standard runtime configurations against the three payload files under `Library/Application Support/PageVault/Installer/`. Core preinstall invokes the universal host bundled under core package Scripts, resolves the user target as postinstall does, and refuses root. Shared `artifact.PublishPair(source, output string) (sha256 string,error)` publishes a staged file plus checksum sidecar with rollback on ordinary errors.
+
+- [ ] Add RED tests placing real synthetic SQLite at each core payload destination, including an unselected browser and aliases. Expand the real PKG, run its core preinstall and prove it fails before payload deployment with unchanged database bytes; normal fresh/upgrade preinstall succeeds without creating a DB or registration.
+- [ ] Add RED paired-publication regressions for a checksum-directory blocker and failure after first publication; verify preservation of old file contents and symlink targets/entries. Exercise actual filesystem state; if error injection is needed, wrap only the failing OS operation.
+- [ ] Implement the preflight and bundle its universal executable in core Scripts before pkgbuild. Preserve existing per-user install/active DB adoption and unsigned mode. Implement one shared publisher, reject directory targets, restore prior entries on failure, and preserve/report backups if rollback itself fails.
+- [ ] Translate CLI/install scripts/PKG resources to English; help/errors remain actionable. Run full Go race suite plus shell/PowerShell validations available on the current OS, and real expanded-package integration under synthetic homes. Commit with evidence.
+
+### Task 4: Maintainable source and cross-platform quality gates
+
+**Files:** `package.json`, `package-lock.json`, new ESLint/Prettier/editor/git attributes configs; `.github/workflows/ci.yml`, `.github/dependabot.yml`; `scripts/` validation helpers only as needed. Apply formatting across maintained source/test files. Change Go module/import path to canonical `github.com/akarazhev/pagevault` in go.mod and Go sources.
+
+**Interfaces:** Expose `npm run lint`, `npm run format`, `npm run format:check`, retain test/check/package commands. CI uses module Go version and .nvmrc, pinned full-SHA official actions, contents:read and bounded timeouts/concurrency. Matrix Ubuntu 24.04, Windows 2025 and macOS 15 runs Go tests/vet and JS/static/browser checks; use race where supported. A Linux job must execute existing Native Messaging E2E without skips. Verify six-target build. npm audit and govulncheck pinned to v1.9.0 run as vulnerability gates.
+
+- [ ] Resolve latest stable development-only ESLint, globals and Prettier from official package metadata; pin exact versions. Add a consistent formatter and useful recommended lint rules; fix genuine findings without blanket suppression. Ignore generated/private files and semantic HTML fixtures.
+- [ ] Add pinned Actions and weekly dependency update configuration; do not publish or expose write tokens on PR runs. Enable private vulnerability reporting through the existing repository admin access and verify the resulting public reporting route.
+- [ ] Format maintained source, standardize line endings and canonical Go module imports. Run formatter/lint/static checks and complete Go/JS suites; dependency vulnerability scans must be inspected rather than judged by exit code alone.
+- [ ] Push the feature branch under existing authorization and run actual GitHub checks. Inspect Linux native E2E and Windows/macOS runtime results; fix genuine platform failures, including URI fixtures. Record job URLs, counts and skips. Commit the task after local gates; add subsequent focused commits for CI failures.
+
+### Task 5: English public project and verified release
+
+**Files:** English rewrite of `README.md`, maintained `docs/*.md`; new `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `docs/PRODUCTION_READINESS.md`; `.github/ISSUE_TEMPLATE/` and PR template. `internal/buildinfo/info.go`, `extension/manifest.json`, package manifests and version-dependent tests; `internal/release/release.go` source whitelist for community/config/CI materials. Historical design/plan files are already English; retain intentional multilingual test data only.
+
+**Interfaces:** Version 1.4.0 synchronized in native/extension/npm metadata. Include new community docs, formatting/lint configs and .github sources in full release; extension ZIP remains extension plus LICENSE. Named artifacts use version 1.4.0 with existing naming conventions. Public security reporting uses the verified GitHub private-report URL, not invented contacts.
+
+- [ ] Rewrite README around installation/use, screenshots if already available, architecture/privacy, MCP, support and contribution links. Translate maintained docs fully, archive old store preparation accurately, add release/support process and concrete readiness evidence without unsupported production claims. No Russian README variant.
+- [ ] Add useful English issue/PR templates, contribution and security policies, changelog and support matrix. Document rejected-queue recovery, manual upgrades/backups, unsigned macOS behavior, limits and what CI actually tests.
+- [ ] Bump 1.4.0 and add a meaningful packaging regression for new development/community source inclusion while keeping personal artifacts excluded. Update release whitelist and version-dependent fixtures; run the complete Go/JS/format/lint/static/vulnerability gates.
+- [ ] Build all six hosts and final ZIP, extension ZIP and universal unsigned PKG; verify actual contents, licenses, source/version/ID alignment and every checksum. Inspect English UI and PKG resources with synthetic data.
+- [ ] Complete independent reviews, integrate/push only after required GitHub checks pass, stage v1.4.0 in a draft, download and verify all six assets, publish and verify anonymous access/exact tag. Preserve v1.3.0 assets. Record exact evidence and all material limits in the report/final response.
