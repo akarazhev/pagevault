@@ -198,3 +198,29 @@ test('HTML budget retains ordinary text that fits while accounting for escaped t
   const c=await page.evaluate(()=>{document.body.textContent='x'.repeat(800);return PageVaultExtractor.extract(document,{maxHtmlChars:1000});});
   assert.match(c.html,/x{800}/);assert.ok(c.html.length<=1000);
 }));
+test('observed live frame remains monitored beyond the discovery budget', () => fixture(async page => {
+  await page.evaluate(()=>{
+    const active=new Map(), Native=MutationObserver; globalThis.activeObservers=active;
+    globalThis.MutationObserver=class extends Native { observe(root,options){super.observe(root,options);active.set(this,root);} disconnect(){super.disconnect();active.delete(this);} };
+    globalThis.submissions=0;
+    globalThis.chrome={runtime:{id:'fixture',lastError:null,sendMessage(message,cb){
+      if(message.type==='capture.submit') submissions++;
+      cb({ok:true,data:message.type==='capture.config'?{enabled:true,settings:{captureIntervalSeconds:300,debounceMs:50,saveHtml:false}}:{}});
+    },onMessage:{addListener(){}}}};
+  });
+  await page.addScriptTag({path:path.join(root,'extension/content.js')});
+  const result=await page.evaluate(async()=>{
+    const wait=()=>new Promise(r=>setTimeout(r,200));
+    const frame=document.createElement('iframe');frame.srcdoc='<p>first</p>';document.body.append(frame);
+    await wait();
+    const root=frame.contentDocument.documentElement;
+    const before=[...activeObservers.values()].includes(root);
+    const container=document.createElement('div');
+    for(let i=0;i<20001;i++)container.append(document.createElement('i'));
+    document.body.prepend(container);await wait();
+    const after=[...activeObservers.values()].includes(root);
+    const previous=submissions;frame.contentDocument.body.append(' changed');await wait();
+    return {before,after,connected:frame.isConnected,triggered:submissions>previous};
+  });
+  assert.equal(result.before,true);assert.equal(result.connected,true);assert.equal(result.after,true);assert.equal(result.triggered,true);
+}));

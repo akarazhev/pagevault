@@ -60,6 +60,17 @@
     observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['href', 'src', 'alt', 'title', 'hidden', 'open', 'aria-expanded'] });
     observers.set(root, observer);
   }
+  function rootIsLive(root) {
+    // isConnected alone is insufficient for a superseded iframe document.
+    const node = root.host || root;
+    if (!node.isConnected) return false;
+    const doc = node.ownerDocument;
+    if (doc === document) return true;
+    try {
+      const frame = doc.defaultView?.frameElement;
+      return !!frame && frame.contentDocument === doc && rootIsLive(frame);
+    } catch { return false; }
+  }
   function discoverRoots() {
     // Bound the supplementary search; the extractor independently reports its own content limits.
     let budget = 20000;
@@ -79,7 +90,7 @@
       }
     }
     visit(document.documentElement);
-    for (const [root, observer] of observers) if (!visited.has(root)) { observer.disconnect(); observers.delete(root); }
+    for (const [root, observer] of observers) if (!rootIsLive(root)) { observer.disconnect(); observers.delete(root); }
   }
   function stop() {
     enabled = false; clearScheduled(); clearInterval(intervalTimer); clearInterval(navigationTimer);
