@@ -6,6 +6,8 @@ Commands include `ping`, `capture.save`, `pages.list`, `pages.get`, `captures.ge
 
 The extension uses a persistent `connectNative` port and matches responses by ID. Read requests time out after 20 seconds without closing the shared port; mutations await acknowledgement or a real disconnect. The next request reconnects after disconnection. A hung mutation may wait until the process ends. Accepted captures remain in IndexedDB until their matching revision is committed. See [architecture](ARCHITECTURE.md).
 
+MCP preserves positive signed 64-bit archive identifiers exactly. Native Messaging and the extension UI use JavaScript numbers for archive page and capture identifiers; values above `Number.MAX_SAFE_INTEGER` (9007199254740991) have not been verified there.
+
 ## Commands and pagination
 
 | Type | Parameters | Result |

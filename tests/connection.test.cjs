@@ -13,7 +13,7 @@ test('connection states preserve compatible older hosts and reject known incompa
   for (const [version, kind] of [
     ['1.4.0', 'ready'],
     ['1.2.0', 'update'],
-    ['1.4.0', 'ready'],
+    ['1.5.0', 'ready'],
     ['unknown', 'ready'],
   ]) {
     const state = connectionState(

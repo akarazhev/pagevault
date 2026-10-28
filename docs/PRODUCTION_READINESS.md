@@ -8,6 +8,8 @@
 
 Desktop Chrome, Chromium, Edge and Brave use an unpacked extension (minimum Chrome 116). Real browser and OS configurations vary. Hosted evidence for the earlier hardening commit is in [verification](VERIFICATION.md); release publication requires passing checks on the final commit. Report bugs through GitHub issues and vulnerabilities through [private reporting](https://github.com/akarazhev/pagevault/security/advisories/new). Support targets the current release without a promised response time.
 
+MCP preserves positive signed 64-bit archive identifiers exactly. Native Messaging and the extension UI use JavaScript numbers for archive page and capture identifiers; values above `Number.MAX_SAFE_INTEGER` (9007199254740991) have not been verified there.
+
 ## Queue recovery
 
 Settings lists rejected captures by title, bounded URL and queued time, with the error. Export JSON explicitly before discarding if you need the data. Retry after correcting the cause; discard only when the data is no longer needed. Actions apply to the displayed revision, so stale actions cannot delete or retry a replacement. Accepted queue entries remain until committed or explicitly discarded. When the queue is full, new submissions are refused: restore the helper, retry delivery and capture again. See [upgrading](UPGRADING.md) for backups and manual upgrades.
