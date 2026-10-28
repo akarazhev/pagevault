@@ -53,7 +53,7 @@ var rootFiles = []string{
 	"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum",
 	"package.json", "package-lock.json", ".gitignore", ".nvmrc", "install.sh",
 	"install-windows.cmd", "install-windows.ps1", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md",
-	".editorconfig", ".prettierignore", ".prettierrc.json", "eslint.config.js",
+	".editorconfig", ".gitattributes", ".prettierignore", ".prettierrc.json", "eslint.config.js",
 }
 
 var docFiles = []string{

@@ -526,7 +526,7 @@ func TestReleaseChecksumDirectoryPreservesOldOutput(t *testing.T) {
 
 func TestCommunityAndDevelopmentSourcesShipSafely(t *testing.T) {
 	root := project(t)
-	names := []string{"CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", ".editorconfig", ".prettierignore", ".prettierrc.json", "eslint.config.js", "docs/PRODUCTION_READINESS.md", ".github/workflows/ci.yml", ".github/dependabot.yml", ".github/ISSUE_TEMPLATE/bug_report.md", ".github/PULL_REQUEST_TEMPLATE.md"}
+	names := []string{"CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", ".editorconfig", ".gitattributes", ".prettierignore", ".prettierrc.json", "eslint.config.js", "docs/PRODUCTION_READINESS.md", ".github/workflows/ci.yml", ".github/dependabot.yml", ".github/ISSUE_TEMPLATE/bug_report.md", ".github/PULL_REQUEST_TEMPLATE.md"}
 	for _, name := range names {
 		put(t, root, name, "source: "+name)
 	}
