@@ -21,7 +21,7 @@ export function connectionState(host, extensionVersion) {
   if (!host?.connected) return {...base, dbPath:'', kind:'unavailable', label:'Нет связи с локальным помощником', detail:'Установите или обновите помощника для вашего браузера, затем проверьте подключение. Если он уже установлен, посмотрите ошибку ниже.'};
   if (host.schema_version != null && host.schema_version !== 1) return {...base, kind:'incompatible', label:'Помощник несовместим', detail:'Помощник использует неподдерживаемую схему архива. Установите совместимую версию перед работой с этой базой.'};
   const update = isOlder(host.version, extensionVersion);
-  return {...base, usable:true, kind:update ? 'update' : 'ready', label:`SQLite подключена · помощник ${version}`, detail:update ? 'Подключение работает. Доступно обновление помощника; после установки переподключите браузер и MCP-клиент.' : 'Помощник подключён. Браузер запускает его автоматически; отдельный сервер запускать не нужно.'};
+  return {...base, usable:true, kind:update ? 'update' : 'ready', label:`SQLite подключена · помощник ${version}`, detail:update ? 'Подключение работает. Установлена более ранняя версия помощника; после обновления переподключите браузер и MCP-клиент.' : 'Помощник подключён. Браузер запускает его автоматически; отдельный сервер запускать не нужно.'};
 }
 export function normalizePlatform(value) {
   return ['mac','win','linux'].includes(value) ? value : 'unknown';

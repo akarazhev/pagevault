@@ -69,8 +69,8 @@
 
 **Interfaces:** release.Options.ExtensionOnly bool and CLI --extension-only; store ZIP roots at manifest.json while the full release retains pagevault/ prefix. Include new docs in full releases.
 
-- [ ] Write failing tests for extension ZIP root/content/checksum, mutually exclusive flags and source/self-output aliases; implement by reusing existing source and output protection.
-- [ ] Prepare privacy policy, listing/review instructions, signed/unsigned PKG usage, preserved DB behavior and downloads/publication prerequisites.
-- [ ] Run Go race suite, vet/module verification, npm/browser/static checks, shell syntax, six-target build, full ZIP, extension ZIP, real unsigned PKG and SHA-256 checks. Record actual results and limits.
-- [ ] Commit `feat: prepare store artifacts and installer documentation`.
+- [x] Write failing tests for extension ZIP root/content/checksum, mutually exclusive flags and source/self-output aliases; implement by reusing existing source and output protection.
+- [x] Prepare privacy policy, listing/review instructions, signed/unsigned PKG usage, preserved DB behavior and downloads/publication prerequisites.
+- [x] Run Go race suite, vet/module verification, npm/browser/static checks, shell syntax, six-target build, full ZIP, extension ZIP, real unsigned PKG and SHA-256 checks. Record actual results and limits.
+- [x] Commit `feat: prepare store artifacts and installer documentation`.
 - [ ] Run one fresh whole-branch read-only review, address material findings with RED→GREEN regressions, then integrate under existing git/push authorization.

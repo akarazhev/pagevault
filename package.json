@@ -12,6 +12,8 @@
     "test:browser": "node --test --test-concurrency=1 tests/extractor.test.cjs tests/integration.test.cjs",
     "check": "node scripts/check.mjs",
     "package": "go run ./cmd/release",
+    "package:extension": "go run ./cmd/release --extension-only",
+    "package:macos": "go run ./cmd/package-macos",
     "build": "go build -trimpath -buildvcs=false -o bin/pagevault-host ./cmd/pagevault"
   },
   "devDependencies": {

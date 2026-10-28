@@ -54,7 +54,7 @@ Keep the established extension UI and permissions. Extend options.html/options.j
 
 ## Release and store preparation
 
-Extend `cmd/release` with an extension-only mode, mutually exclusive with source-only and skip-build. It must include only extension files with manifest.json at the ZIP root, preserve the source/alias protections of the full packager, avoid self-inclusion, and emit SHA-256.
+Extend `cmd/release` with an extension-only mode, mutually exclusive with source-only and skip-build. It must include extension files plus the root LICENSE required for MIT redistribution, with manifest.json at the ZIP root, preserve the source/alias protections of the full packager, avoid self-inclusion, and emit SHA-256.
 
 Add installation, privacy, and store-preparation documents and include them in the complete release. The privacy policy describes selected-site DOM/URL/text/metadata/optional HTML collection, IndexedDB queue and SQLite, deletion, local processing, optional agent access and cloud providers, absence of telemetry/remote collection by PageVault itself, and support contact via repository issues. It does not claim fully offline processing when a cloud agent is used.
 

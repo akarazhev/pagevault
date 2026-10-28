@@ -22,11 +22,12 @@ import (
 // Options controls release creation. Root defaults to the current directory.
 // SkipBuild requires all six hosts in Root/bin; SourceOnly excludes hosts entirely.
 type Options struct {
-	Root       string
-	Output     string
-	Go         string
-	SourceOnly bool
-	SkipBuild  bool
+	Root          string
+	Output        string
+	Go            string
+	SourceOnly    bool
+	SkipBuild     bool
+	ExtensionOnly bool
 }
 
 type target struct{ os, arch string }
@@ -55,7 +56,7 @@ var rootFiles = []string{
 
 var docFiles = []string{
 	"ARCHITECTURE.md", "ADAPTERS.md", "SCHEMA.md", "NATIVE_PROTOCOL.md",
-	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "extension-id.txt",
+	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "INSTALLATION.md", "PRIVACY.md", "CHROME_WEB_STORE.md", "extension-id.txt",
 }
 
 // Run validates source identity, optionally builds all supported platforms, and
@@ -63,6 +64,9 @@ var docFiles = []string{
 func Run(ctx context.Context, opts Options) error {
 	if opts.SourceOnly && opts.SkipBuild {
 		return fmt.Errorf("-source-only and -skip-build are mutually exclusive")
+	}
+	if opts.ExtensionOnly && (opts.SourceOnly || opts.SkipBuild) {
+		return fmt.Errorf("-extension-only cannot be combined with -source-only or -skip-build")
 	}
 	if opts.Root == "" {
 		opts.Root = "."
@@ -79,7 +83,11 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 	if opts.Output == "" {
-		opts.Output = filepath.Join("dist", "PageVault-"+buildinfo.Version+".zip")
+		name := "PageVault-" + buildinfo.Version + ".zip"
+		if opts.ExtensionOnly {
+			name = "PageVault-Extension-" + buildinfo.Version + ".zip"
+		}
+		opts.Output = filepath.Join("dist", name)
 	}
 	if !filepath.IsAbs(opts.Output) {
 		opts.Output = filepath.Join(root, opts.Output)
@@ -88,7 +96,7 @@ func Run(ctx context.Context, opts Options) error {
 	if opts.Go == "" {
 		opts.Go = "go"
 	}
-	if !opts.SourceOnly && !opts.SkipBuild {
+	if !opts.SourceOnly && !opts.SkipBuild && !opts.ExtensionOnly {
 		if err := build(ctx, root, opts.Go); err != nil {
 			return err
 		}
@@ -97,7 +105,12 @@ func Run(ctx context.Context, opts Options) error {
 	if err != nil {
 		return err
 	}
-	if !opts.SourceOnly {
+	if opts.ExtensionOnly {
+		if _, err := regularFile(root, "LICENSE"); err != nil {
+			return fmt.Errorf("extension license: %w", err)
+		}
+	}
+	if !opts.SourceOnly && !opts.ExtensionOnly {
 		var checksums strings.Builder
 		for _, target := range targets {
 			rel := target.path()
@@ -152,8 +165,22 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}
 	entries = filtered
+	prefix := "pagevault/"
+	if opts.ExtensionOnly {
+		prefix = ""
+		only := entries[:0]
+		for _, e := range entries {
+			if strings.HasPrefix(e.name, "extension/") {
+				e.name = strings.TrimPrefix(e.name, "extension/")
+				only = append(only, e)
+			} else if e.name == "LICENSE" {
+				only = append(only, e)
+			}
+		}
+		entries = only
+	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
-	return writeZIP(opts.Output, entries)
+	return writeZIP(opts.Output, entries, prefix)
 }
 
 // Match aliases of one directory entry while allowing replacement of separate
@@ -432,7 +459,7 @@ func sources(root string) ([]entry, error) {
 	return entries, nil
 }
 
-func writeZIP(output string, entries []entry) error {
+func writeZIP(output string, entries []entry, prefix string) error {
 	if err := os.MkdirAll(filepath.Dir(output), 0755); err != nil {
 		return err
 	}
@@ -444,7 +471,7 @@ func writeZIP(output string, entries []entry) error {
 	h := sha256.New()
 	z := zip.NewWriter(io.MultiWriter(f, h))
 	for _, entry := range entries {
-		header := &zip.FileHeader{Name: "pagevault/" + entry.name, Method: zip.Deflate, Modified: zipTime}
+		header := &zip.FileHeader{Name: prefix + entry.name, Method: zip.Deflate, Modified: zipTime}
 		header.SetMode(entry.mode)
 		w, err := z.CreateHeader(header)
 		if err == nil {
