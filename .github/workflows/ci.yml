@@ -44,6 +44,17 @@ jobs:
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile("$pwd/install-windows.ps1", [ref]$null, [ref]$errors) | Out-Null
           if ($errors.Count) { $errors | Format-List; exit 1 }
+      - name: Exercise Windows installer dry run
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'pagevault-profile'
+          New-Item -ItemType Directory -Force $env:USERPROFILE | Out-Null
+          New-Item -ItemType Directory -Force bin/windows-amd64 | Out-Null
+          go build -o bin/windows-amd64/pagevault-host.exe ./cmd/pagevault
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./install-windows.ps1 -DryRun -Db (Join-Path $env:USERPROFILE 'archive.sqlite3')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

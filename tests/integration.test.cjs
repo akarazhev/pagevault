@@ -521,6 +521,8 @@ nativeTest('archive UI downloads the Go-backed SQLite page as valid JSON', async
 });
 
 nativeTest('content scripts cannot list, export, retry, or discard queued captures', async () => {
+  site = await context.newPage();
+  await site.goto(server.url + '/tests/fixtures/integration-forum.html');
   const tabId = await archive.evaluate(
     async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url).id,
     site.url(),

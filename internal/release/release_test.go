@@ -2,6 +2,7 @@ package release
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -44,11 +45,14 @@ func put(t *testing.T, root, name, data string) {
 
 func archive(t *testing.T, path string) map[string]*zip.File {
 	t.Helper()
-	z, err := zip.OpenReader(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { z.Close() })
+	z, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
 	files := make(map[string]*zip.File)
 	var names []string
 	for _, f := range z.File {
