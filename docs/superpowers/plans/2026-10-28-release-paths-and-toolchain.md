@@ -4,7 +4,7 @@
 
 **Goal:** Fix output aliases and verify current stable tooling and dependencies.
 
-**Architecture:** Resolve the output parent directory, preserving the final filename and the existing release whitelist.
+**Architecture:** Compare filesystem directory-entry identities, preserving final-component symlink replacement and the existing release whitelist.
 
 **Tech Stack:** Go 1.27.3, Node.js 26.12.1, npm 12.2.1, Playwright 1.64.1, modernc.org/libc 1.79.1.
 
@@ -33,7 +33,7 @@
 
 - [x] Add portable regressions for directory aliases, nested missing directories, source overlap, and final archive symlink replacement.
 - [x] Run release tests with ordinary temporary paths. Expected: checksum inclusion and source-overlap assertions fail before the fix.
-- [x] Resolve existing output-directory ancestors without following the final filename; propagate filesystem errors.
+- [x] Compare output/source directory-entry identities without following final symlinks; propagate filesystem errors.
 - [x] Run the full Go race suite and npm test. Expected: zero failures with explicit platform skips.
 - [x] Commit as fix: canonicalize release output directories.
 
@@ -48,3 +48,9 @@
 - [x] Run Go race tests, vet, module verification, npm test/check, and shell syntax checks with pinned tools. Expected: zero failures with explicit platform skips.
 - [x] Build all six targets, verify ZIP/checksums, and smoke-test the macOS helper with isolated SQLite.
 - [x] Record actual results and commit as chore: use current stable toolchains and dependencies.
+
+### Final review correction
+
+- [x] Reproduce the review finding for filename/directory case aliases on macOS before changing code.
+- [x] Compare filesystem directory-entry identities, retaining safe final symlink and distinct hard-link replacement.
+- [x] Verify the complete suites: 55 Go tests pass with 3 Linux skips; 41 JavaScript/browser tests pass with 8 Linux skips.

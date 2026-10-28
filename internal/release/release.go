@@ -84,10 +84,7 @@ func Run(ctx context.Context, opts Options) error {
 	if !filepath.IsAbs(opts.Output) {
 		opts.Output = filepath.Join(root, opts.Output)
 	}
-	opts.Output, err = resolveOutputPath(filepath.Clean(opts.Output))
-	if err != nil {
-		return fmt.Errorf("resolve output directory: %w", err)
-	}
+	opts.Output = filepath.Clean(opts.Output)
 	if opts.Go == "" {
 		opts.Go = "go"
 	}
@@ -135,10 +132,22 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	filtered := entries[:0]
 	for _, entry := range entries {
-		if entry.path == opts.Output {
+		if entry.path == "" {
+			filtered = append(filtered, entry)
+			continue
+		}
+		overlap, err := sameFileEntry(entry.path, opts.Output)
+		if err != nil {
+			return fmt.Errorf("check output overlap: %w", err)
+		}
+		if overlap {
 			return fmt.Errorf("output overlaps release source: %s", entry.name)
 		}
-		if entry.path != opts.Output+".sha256" {
+		checksum, err := sameFileEntry(entry.path, opts.Output+".sha256")
+		if err != nil {
+			return fmt.Errorf("check output checksum: %w", err)
+		}
+		if !checksum {
 			filtered = append(filtered, entry)
 		}
 	}
@@ -147,29 +156,51 @@ func Run(ctx context.Context, opts Options) error {
 	return writeZIP(opts.Output, entries)
 }
 
-// Resolve directory aliases, including existing ancestors of a new directory.
-// Keep the final filename literal: publishing replaces file symlinks themselves.
-func resolveOutputPath(path string) (string, error) {
-	directory := filepath.Dir(path)
-	var missing []string
-	for {
-		resolved, err := filepath.EvalSymlinks(directory)
-		if err == nil {
-			for i := len(missing) - 1; i >= 0; i-- {
-				resolved = filepath.Join(resolved, missing[i])
-			}
-			return filepath.Join(resolved, filepath.Base(path)), nil
-		}
-		if !os.IsNotExist(err) {
-			return "", err
-		}
-		parent := filepath.Dir(directory)
-		if parent == directory {
-			return "", err
-		}
-		missing = append(missing, filepath.Base(directory))
-		directory = parent
+// Match aliases of one directory entry while allowing replacement of separate
+// hard links. Lstat preserves replacement semantics for final-component symlinks.
+func sameFileEntry(a, b string) (bool, error) {
+	if a == b {
+		return true, nil
 	}
+	first, err := os.Lstat(a)
+	if err != nil {
+		return false, err
+	}
+	second, err := os.Lstat(b)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !os.SameFile(first, second) {
+		return false, nil
+	}
+	parentA, err := os.Stat(filepath.Dir(a))
+	if err != nil {
+		return false, err
+	}
+	parentB, err := os.Stat(filepath.Dir(b))
+	if err != nil {
+		return false, err
+	}
+	if !os.SameFile(parentA, parentB) {
+		return false, nil
+	}
+	nameA, nameB := filepath.Base(a), filepath.Base(b)
+	if nameA == nameB {
+		return true, nil
+	}
+	entries, err := os.ReadDir(filepath.Dir(a))
+	if err != nil {
+		return false, err
+	}
+	var exactA, exactB bool
+	for _, entry := range entries {
+		exactA = exactA || entry.Name() == nameA
+		exactB = exactB || entry.Name() == nameB
+	}
+	return !(exactA && exactB), nil
 }
 
 func validate(root string) error {

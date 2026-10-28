@@ -323,6 +323,73 @@ func TestArchiveReplacesSymlinkWithoutChangingTarget(t *testing.T) {
 	}
 }
 
+func TestOutputCaseAliasCannotOverwriteReleaseSource(t *testing.T) {
+	root := project(t)
+	out := filepath.Join(root, "readme.md")
+	if _, err := os.Stat(out); os.IsNotExist(err) {
+		t.Skip("case-sensitive filesystem")
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err == nil {
+		t.Error("accepted a case alias of a release source as output")
+	}
+	got, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "release" {
+		t.Fatal("overwrote release source through a case alias")
+	}
+}
+
+func TestOutputCaseAliasesExcludeOwnChecksum(t *testing.T) {
+	for _, name := range []string{"EXTENSION/release.zip", "extension/RELEASE.zip"} {
+		t.Run(name, func(t *testing.T) {
+			root := project(t)
+			if _, err := os.Stat(filepath.Join(root, "EXTENSION")); os.IsNotExist(err) {
+				t.Skip("case-sensitive filesystem")
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			first := filepath.Join(root, "extension", "release.zip")
+			if err := Run(context.Background(), Options{Root: root, Output: first, SourceOnly: true}); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(root, filepath.FromSlash(name))
+			if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+				t.Fatal(err)
+			}
+			for filename := range archive(t, out) {
+				if strings.HasSuffix(filename, ".zip.sha256") {
+					t.Fatal("included output checksum through a case alias")
+				}
+			}
+		})
+	}
+}
+
+func TestArchiveReplacesHardLinkWithoutChangingSource(t *testing.T) {
+	root := project(t)
+	out := filepath.Join(root, "release.zip")
+	if err := os.Link(filepath.Join(root, "README.md"), out); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "release" {
+		t.Fatal("archive overwrote source through a hard link")
+	}
+	if content(t, archive(t, out)["pagevault/README.md"]) != "release" {
+		t.Fatal("archive content changed")
+	}
+}
+
 func TestChecksumDoesNotFollowExistingSymlink(t *testing.T) {
 	root := project(t)
 	out := filepath.Join(root, "dist/release.zip")
