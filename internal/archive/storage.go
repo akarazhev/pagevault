@@ -65,14 +65,14 @@ func DefaultPath() string {
 		return filepath.Join(r, "pagevault", "archive.sqlite3")
 	}
 }
-func Open(path string) (*Store, error) {
+func resolvePath(path string) (string, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
 	if path == "~" || strings.HasPrefix(path, "~/") {
 		h, e := os.UserHomeDir()
 		if e != nil {
-			return nil, e
+			return "", e
 		}
 		if path == "~" {
 			path = h
@@ -80,7 +80,20 @@ func Open(path string) (*Store, error) {
 			path = filepath.Join(h, strings.TrimPrefix(path, "~/"))
 		}
 	}
-	p, e := filepath.Abs(path)
+	return filepath.Abs(path)
+}
+
+func sqliteURI(path string) *url.URL {
+	// Encode URI punctuation so an ordinary filename cannot become DSN options.
+	uriPath := filepath.ToSlash(path)
+	if runtime.GOOS == "windows" && !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	return &url.URL{Scheme: "file", Path: uriPath}
+}
+
+func Open(path string) (*Store, error) {
+	p, e := resolvePath(path)
 	if e != nil {
 		return nil, e
 	}
@@ -96,12 +109,7 @@ func Open(path string) (*Store, error) {
 	if e != nil {
 		return nil, e
 	}
-	// Encode URI punctuation so an ordinary filename cannot become DSN options.
-	uriPath := filepath.ToSlash(p)
-	if runtime.GOOS == "windows" && !strings.HasPrefix(uriPath, "/") {
-		uriPath = "/" + uriPath
-	}
-	dsn := (&url.URL{Scheme: "file", Path: uriPath}).String()
+	dsn := sqliteURI(p).String()
 	db, e := sql.Open("sqlite", dsn)
 	if e != nil {
 		return nil, e
@@ -416,6 +424,9 @@ func summary(m map[string]any, budgets map[string]int) map[string]any {
 	return m
 }
 func (s *Store) ListPages(query, domain string, limit, offset int64) (map[string]any, error) {
+	return s.ListPagesContext(context.Background(), query, domain, limit, offset)
+}
+func (s *Store) ListPagesContext(ctx context.Context, query, domain string, limit, offset int64) (map[string]any, error) {
 	if _, e := Integer(limit, "limit", 1, 200); e != nil {
 		return nil, e
 	}
@@ -437,10 +448,10 @@ func (s *Store) ListPages(query, domain string, limit, offset int64) (map[string
 		where = " WHERE " + strings.Join(conditions, " AND ")
 	}
 	var total int64
-	if e := s.DB.QueryRow("SELECT count(*) FROM pages p"+where, args...).Scan(&total); e != nil {
+	if e := s.DB.QueryRowContext(ctx, "SELECT count(*) FROM pages p"+where, args...).Scan(&total); e != nil {
 		return nil, e
 	}
-	rows, e := s.DB.Query("SELECT "+pageColumns+" FROM pages p"+where+" ORDER BY p.last_seen DESC,p.id DESC LIMIT ? OFFSET ?", append(args, limit, offset)...)
+	rows, e := s.DB.QueryContext(ctx, "SELECT "+pageColumns+" FROM pages p"+where+" ORDER BY p.last_seen DESC,p.id DESC LIMIT ? OFFSET ?", append(args, limit, offset)...)
 	if e != nil {
 		return nil, e
 	}
@@ -454,10 +465,18 @@ func (s *Store) ListPages(query, domain string, limit, offset int64) (map[string
 	return map[string]any{"items": items, "total": total, "limit": limit, "offset": offset}, nil
 }
 func (s *Store) Page(id int64, bounded bool) (map[string]any, error) {
+	return readPage(context.Background(), s.DB, id, bounded)
+}
+
+type pageReader interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+func readPage(ctx context.Context, db pageReader, id int64, bounded bool) (map[string]any, error) {
 	if _, e := Integer(id, "page_id", 1, -1); e != nil {
 		return nil, e
 	}
-	rows, e := s.DB.Query("SELECT "+pageColumns+" FROM pages p WHERE p.id=?", id)
+	rows, e := db.QueryContext(ctx, "SELECT "+pageColumns+" FROM pages p WHERE p.id=?", id)
 	if e != nil {
 		return nil, e
 	}
@@ -474,17 +493,20 @@ func (s *Store) Page(id int64, bounded bool) (map[string]any, error) {
 	return items[0], nil
 }
 func (s *Store) GetPage(id, limit, offset int64) (map[string]any, error) {
+	return s.GetPageContext(context.Background(), id, limit, offset)
+}
+func (s *Store) GetPageContext(ctx context.Context, id, limit, offset int64) (map[string]any, error) {
 	if _, e := Integer(limit, "limit", 1, 500); e != nil {
 		return nil, e
 	}
 	if _, e := Integer(offset, "offset", 0, -1); e != nil {
 		return nil, e
 	}
-	page, e := s.Page(id, true)
+	page, e := readPage(ctx, s.DB, id, true)
 	if e != nil {
 		return nil, e
 	}
-	rows, e := s.DB.Query("SELECT id,captured_at,content_hash,block_count,reason FROM captures WHERE page_id=? ORDER BY id DESC LIMIT ? OFFSET ?", id, limit, offset)
+	rows, e := s.DB.QueryContext(ctx, "SELECT id,captured_at,content_hash,block_count,reason FROM captures WHERE page_id=? ORDER BY id DESC LIMIT ? OFFSET ?", id, limit, offset)
 	if e != nil {
 		return nil, e
 	}
@@ -498,22 +520,34 @@ func (s *Store) GetPage(id, limit, offset int64) (map[string]any, error) {
 	return map[string]any{"page": page, "captures": items, "total": page["capture_count"]}, nil
 }
 func (s *Store) CaptureJSON(id int64) (string, error) {
+	return s.CaptureJSONContext(context.Background(), id)
+}
+func (s *Store) CaptureJSONContext(ctx context.Context, id int64) (string, error) {
 	if _, e := Integer(id, "capture_id", 1, -1); e != nil {
 		return "", e
 	}
 	var raw string
-	e := s.DB.QueryRow("SELECT payload_json FROM captures WHERE id=?", id).Scan(&raw)
+	e := s.DB.QueryRowContext(ctx, "SELECT payload_json FROM captures WHERE id=?", id).Scan(&raw)
 	if errors.Is(e, sql.ErrNoRows) {
 		return "", &NotFoundError{"Capture not found"}
 	}
 	return raw, e
 }
 func (s *Store) Export(id int64) (map[string]any, error) {
-	page, e := s.Page(id, false)
+	return s.ExportContext(context.Background(), id)
+}
+func (s *Store) ExportContext(ctx context.Context, id int64) (map[string]any, error) {
+	// Read metadata and accumulated blocks from one committed snapshot.
+	tx, e := s.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if e != nil {
 		return nil, e
 	}
-	rows, e := s.DB.Query("SELECT payload_json FROM blocks WHERE page_id=? ORDER BY id", id)
+	defer tx.Rollback()
+	page, e := readPage(ctx, tx, id, false)
+	if e != nil {
+		return nil, e
+	}
+	rows, e := tx.QueryContext(ctx, "SELECT payload_json FROM blocks WHERE page_id=? ORDER BY id", id)
 	if e != nil {
 		return nil, e
 	}
@@ -531,6 +565,12 @@ func (s *Store) Export(id int64) (map[string]any, error) {
 		blocks = append(blocks, v)
 	}
 	if e = rows.Err(); e != nil {
+		return nil, e
+	}
+	if e = rows.Close(); e != nil {
+		return nil, e
+	}
+	if e = tx.Commit(); e != nil {
 		return nil, e
 	}
 	return map[string]any{"schema_version": 1, "archive_kind": "observed_blocks", "page": page, "blocks": blocks}, nil
