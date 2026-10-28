@@ -95,9 +95,12 @@ func validateSchema(ctx context.Context, conn *sql.Conn) error {
 			return fmt.Errorf("incomplete archive schema: %s id is not a rowid alias", table)
 		}
 	}
-	for _, key := range []struct{ table, columns string }{{"pages", "url"}, {"captures", "page_id,content_hash"}, {"blocks", "page_id,block_hash"}} {
+	for _, key := range []struct {
+		table, columns string
+		count          int
+	}{{"pages", "url", 1}, {"captures", "page_id,content_hash", 2}, {"blocks", "page_id,block_hash", 2}} {
 		var n int
-		err := conn.QueryRowContext(ctx, `SELECT count(*) FROM pragma_index_list(?) AS i WHERE i."unique"=1 AND i.partial=0 AND (SELECT group_concat(name, ',') FROM pragma_index_info(i.name))=? AND NOT EXISTS (SELECT 1 FROM pragma_index_xinfo(i.name) WHERE "key"=1 AND coll != 'BINARY')`, key.table, key.columns).Scan(&n)
+		err := conn.QueryRowContext(ctx, `SELECT count(*) FROM pragma_index_list(?) AS i WHERE i."unique"=1 AND i.partial=0 AND (SELECT count(*) FROM pragma_index_info(i.name))=? AND (SELECT group_concat(name, ',') FROM pragma_index_info(i.name))=? AND NOT EXISTS (SELECT 1 FROM pragma_index_info(i.name) WHERE cid<0 OR name IS NULL) AND NOT EXISTS (SELECT 1 FROM pragma_index_xinfo(i.name) WHERE "key"=1 AND coll != 'BINARY')`, key.table, key.count, key.columns).Scan(&n)
 		if err != nil {
 			return err
 		}

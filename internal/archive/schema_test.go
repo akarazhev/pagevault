@@ -162,3 +162,21 @@ func assertRejectedSchemaUnchanged(t *testing.T, schema string) {
 		t.Fatalf("journal changed: %s %v", mode, err)
 	}
 }
+
+func TestSchemaOneRejectsExpressionUniqueIndexesWithoutMutation(t *testing.T) {
+	const schema = `CREATE TABLE pages(id INTEGER PRIMARY KEY,url TEXT NOT NULL UNIQUE,title TEXT NOT NULL,hostname TEXT NOT NULL,first_seen TEXT NOT NULL,last_seen TEXT NOT NULL,latest_capture_id INTEGER);
+ CREATE TABLE captures(id INTEGER PRIMARY KEY,page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,captured_at TEXT NOT NULL,content_hash TEXT NOT NULL,block_count INTEGER NOT NULL,reason TEXT NOT NULL,payload_json TEXT NOT NULL,UNIQUE(page_id,content_hash));
+ CREATE TABLE blocks(id INTEGER PRIMARY KEY,page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,block_hash TEXT NOT NULL,payload_json TEXT NOT NULL,search_text TEXT NOT NULL,UNIQUE(page_id,block_hash)); PRAGMA user_version=1;`
+	for _, tc := range []struct{ name, from, to, index string }{
+		{"pages", "url TEXT NOT NULL UNIQUE", "url TEXT NOT NULL", "CREATE UNIQUE INDEX expression_key ON pages(url,(1));"},
+		{"captures", ",UNIQUE(page_id,content_hash)", "", "CREATE UNIQUE INDEX expression_key ON captures(page_id,content_hash,(1));"},
+		{"blocks", ",UNIQUE(page_id,block_hash)", "", "CREATE UNIQUE INDEX expression_key ON blocks(page_id,block_hash,(1));"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(schema, tc.from) {
+				t.Fatal("invalid test fixture")
+			}
+			assertRejectedSchemaUnchanged(t, strings.Replace(schema, tc.from, tc.to, 1)+tc.index)
+		})
+	}
+}
