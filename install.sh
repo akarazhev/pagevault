@@ -16,7 +16,7 @@ if [[ ! -f "$pagevault_binary" ]]; then
   echo "Не найден $pagevault_binary. Распакуйте полный выпуск или соберите его: go run ./cmd/release" >&2
   exit 1
 fi
-chmod u+x -- "$pagevault_binary"
+chmod u+x "$pagevault_binary"
 pagevault_browser="${1:-chrome}"
 if [[ $# -gt 0 ]]; then shift; fi
 "$pagevault_binary" install --browser "$pagevault_browser" --extension-manifest "$pagevault_root/extension/manifest.json" "$@"
