@@ -1,133 +1,25 @@
-# Установка локального компонента PageVault
+# Installation
 
-PageVault состоит из расширения браузера и локального помощника, который записывает SQLite и предоставляет MCP для агента. В 1.3.0 подготовлен пользовательский установщик macOS. Расширение показывает состояние помощника, версию, путь базы, ошибку связи и последовательность подключения в настройках.
+Download the named artifacts and matching SHA-256 files from [GitHub Releases](https://github.com/akarazhev/pagevault/releases). `PageVault-1.4.0.zip` contains six binaries and the extension. `PageVault-Extension-1.4.0.zip` contains the extension and license only. `PageVault-1.4.0-macOS-unsigned.pkg` installs the macOS helper for Intel and Apple Silicon, but not the extension. GitHub's automatic source archives have no binaries.
 
-## Загрузка из GitHub Releases
+Extract the bundle to a permanent directory. On macOS or Linux run `./install.sh chrome`; replace `chrome` with `chromium`, `edge`, or `brave` as needed. On Windows run `install-windows.cmd`, or `./install-windows.ps1 -Browser edge`. Install separately for each browser. The installer displays the runtime and database paths. Use `--db PATH` (Windows: `-Db PATH`) to select a database; selecting a different path does not move data. The helper and SQLite do not require a separate service, Python, Node or Go at runtime.
 
-PageVault распространяется бесплатно через [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Для установки не нужны аккаунт разработчика магазина или Apple Developer Program.
+Alternatively, on macOS 13 or later, open the unsigned PKG and choose the browsers to register. Close those browsers when prompted. The package is neither Developer ID signed nor notarized. macOS may block it; see [Apple's instructions for opening an individually blocked app](https://support.apple.com/en-us/102445). Organization policy may prevent an exception. Do not disable system protections globally.
 
-| Файл выпуска | Назначение |
-|---|---|
-| `PageVault-1.3.0.zip` | Полный комплект: расширение, программы для шести ОС/архитектур, скрипты установки, исходники и документация |
-| `PageVault-1.3.0-macOS-unsigned.pkg` | Только помощник macOS для Intel и Apple Silicon; выбирайте вместе с ZIP расширения или полным комплектом |
-| `PageVault-Extension-1.3.0.zip` | Только расширение; `manifest.json` находится в корне распакованной папки |
-| Одноимённые `.sha256` | Контрольные суммы соответствующих файлов |
+Load the unpacked extension from the bundle's `extension` folder, or the extracted standalone ZIP folder, on `chrome://extensions`, `edge://extensions`, or `brave://extensions`: enable developer mode and choose Load unpacked. Keep the directory in place. Check the connection and database path in PageVault settings. The fixed extension ID is `ijkioljfdaaplhaldbdpabckkfcieiee`. See [upgrading](UPGRADING.md) before replacing an installation.
 
-Автоматические архивы GitHub **Source code** содержат исходники без готовых программ. Для обычной установки скачайте именованный комплект из таблицы.
+For troubleshooting, confirm the installer targeted the same browser, restart it, and check the settings error and database path. For custom registration paths, run the installer with `--help`; `--runtime-dir`, `--manifest-dir`, `--extension-id`, `--db` and `--dry-run` are supported. `--preserve-registered-db` preserves an existing registration's database path when changing runtime directory. The PKG uses this option.
 
-Расширение загружается вручную: распакуйте его в постоянную папку, откройте `chrome://extensions`, включите «Режим разработчика», нажмите «Загрузить распакованное расширение» и выберите папку с `manifest.json`. В полном комплекте это `pagevault/extension/`. Сохраните эту папку на месте; обновления устанавливаются вручную. Порядок описан в [документации Chrome](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked).
+## Paths and diagnostics
 
-## macOS
+| OS | Default database | Default per-browser runtime |
+| --- | --- | --- |
+| Linux | `~/.local/share/pagevault/archive.sqlite3` | `~/.local/share/pagevault/host/<browser>/` |
+| macOS | `~/Library/Application Support/PageVault/archive.sqlite3` | `~/Library/Application Support/PageVault/host/<browser>/` |
+| Windows | `%USERPROFILE%\AppData\Local\PageVault\archive.sqlite3` | `%USERPROFILE%\AppData\Local\PageVault\host\<browser>\` |
 
-Требуется macOS 13 или новее. Один пакет содержит программу для Intel и Apple Silicon. Обычная установка выполняется для текущего пользователя; системные каталоги и другие учётные записи не настраиваются.
+The actual configured path appears in settings. On macOS PKG stores the universal binary and licenses in `~/Library/Application Support/PageVault/Installer/`; selected browsers have separate runtime copies and configuration. A damaged existing registration stops preservation before replacement; explicitly select the correct existing database with the CLI if repair is needed. Old custom runtime files are not removed.
 
-Для выпуска 1.3.0:
+On macOS/Linux verify a downloaded sidecar in its directory with `shasum -a 256 -c PageVault-1.4.0.zip.sha256`. On Windows compare `Get-FileHash .\PageVault-1.4.0.zip -Algorithm SHA256` to the sidecar. Substitute the corresponding file name for the other artifacts. For diagnostics, run the appropriate binary, for example `./bin/darwin-arm64/pagevault-host diagnose` or `bin\windows-amd64\pagevault-host.exe diagnose`. This separate process reports its own PID and connection, not the browser's running session. On connection errors confirm registration and browser, fixed extension ID, helper version and database path; rerun the installer if needed.
 
-1. Получите `.pkg` на [странице выпусков](https://github.com/akarazhev/pagevault/releases).
-2. Откройте его в macOS Installer. На шаге выбора компонентов отметьте нужные браузеры: Chrome включён по умолчанию, Chromium, Edge и Brave доступны отдельно.
-3. Закройте выбранные браузеры, когда об этом попросит Installer, и завершите установку.
-4. Откройте браузер и настройки PageVault. Нажмите «Проверить подключение» и проверьте версию помощника и путь SQLite.
-5. Откройте обычную веб-страницу, включите запись для её сайта и сохраните снимок. Проверьте его в архиве.
-
-`PageVault-1.3.0-macOS-unsigned.pkg` распространяется без подписи Developer ID и нотарификации. Если macOS блокирует открытие скачанного пакета, проверьте источник и в «Системные настройки → Конфиденциальность и безопасность» выберите «Всё равно открыть», если действие доступно. Корпоративные ограничения могут запрещать такое разрешение; ZIP также не гарантирует отсутствие системных проверок. Это разрешение для конкретного файла по [инструкции Apple](https://support.apple.com/en-us/102445).
-
-Для открытия готового пакета из корня репозитория:
-
-```bash
-open dist/PageVault-1.3.0-macOS-unsigned.pkg
-```
-
-Перед обновлением сохраните резервную копию архива по [инструкции обновления](UPGRADING.md). Оставьте Chrome выбранным или отметьте свой браузер и завершите установку. Если Installer требует закрыть браузер, дождитесь сохранения очереди и закройте его. После установки проверьте скопированный помощник:
-
-```bash
-"$HOME/Library/Application Support/PageVault/host/chrome/pagevault-host" version
-```
-
-Для другого браузера замените `chrome` на `chromium`, `edge` или `brave`. Команда должна показать `PageVault 1.3.0`. Если расширение загружено из исходников, обновите его на `chrome://extensions`, откройте настройки PageVault и нажмите «Проверить подключение». Сверьте путь SQLite с прежним, сохраните страницу и проверьте архив. Диалог успешной установки, версия программы и связь с расширением проверяются отдельно.
-
-Пакет размещает универсальную программу и лицензии в `~/Library/Application Support/PageVault/Installer/`. Регистрация каждого выбранного браузера использует свою копию программы в `~/Library/Application Support/PageVault/host/<browser>/` и соседний `pagevault.json`. Путь к существующему архиву сохраняется, включая установку через прежний нестандартный `--runtime-dir`: программа читает конфигурацию действующей стандартной native-регистрации и переводит регистрацию на обычную пользовательскую папку. Старые файлы нестандартной установки остаются на месте.
-
-Если действующая регистрация или конфигурация повреждена, установка останавливается с сообщением до её замены. В таком случае нужно явно выбрать правильный существующий файл через CLI с `--db`; данные автоматически в другой архив не переносятся. Нестандартные профили и каталоги Native Messaging по-прежнему настраиваются через `--manifest-dir`.
-
-Отдельная служба не требуется: браузер запускает помощника по необходимости. MCP-клиент запускает второй процесс для чтения той же базы. После обновления переподключите PageVault в клиенте агента.
-
-## Windows и Linux
-
-Используйте полный ZIP и прежние установочные скрипты. В Windows для Chrome откройте `install-windows.cmd` двойным щелчком. Для Edge выполните `install-windows.cmd edge`; доступны также `brave` и `chromium`.
-
-На Linux откройте терминал в распакованной папке и выполните:
-
-```bash
-bash install.sh chrome
-```
-
-Для другого браузера замените `chrome` на `edge`, `brave` или `chromium`. В ZIP есть программы на amd64 и arm64; среда Go или Node.js для работы не нужна. Графические установщики Windows/Linux пока не реализованы.
-
-## Обновление и база
-
-Дождитесь пустой очереди, запишите путь базы и закройте браузер вместе с фоновыми процессами. Отключите MCP-подключение на время обновления. Установите новый компонент для тех же браузеров и снова проверьте связь.
-
-Переключение `--db` выбирает другой файл, но не переносит архив. Для резервного копирования работающего SQLite используйте `.backup`; при копировании файлов после остановки всех процессов сохраните также существующие WAL/SHM-файлы. Подробнее: [UPGRADING.md](UPGRADING.md).
-
-## Codex и Claude Code
-
-Для MCP удобно выбрать установленную копию конкретного браузера, например `/Users/ваш-пользователь/Library/Application Support/PageVault/host/chrome/pagevault-host`, и передать аргумент `mcp`. Соседний `pagevault.json` уже содержит фактический путь архива. Явный `--db` позволяет выбрать другой существующий файл.
-
-Команды настройки обоих клиентов и ограничения доступа: [MCP.md](MCP.md). Локальный процесс агента с облачной моделью может передавать полученные сведения провайдеру модели.
-
-## Сборка пакетов
-
-Для PKG без Developer ID на macOS с Go 1.27.3 и системными инструментами Apple:
-
-```bash
-go run ./cmd/package-macos --unsigned
-```
-
-Builder компилирует обе Darwin-архитектуры из текущих исходников, объединяет их через `lipo`, подписывает исполняемый файл ad hoc и создаёт PKG/SHA-256 в `dist/`. Имена неподписанных пакетов оканчиваются на `-unsigned.pkg`. Этот режим используется для GitHub Releases и не требует сертификатов или Apple Developer account; ad-hoc подпись программы не подтверждает личность разработчика в Gatekeeper.
-
-### Первая настройка подписи
-
-Подпись Developer ID остаётся дополнительным вариантом для будущих выпусков. Для неё требуется членство в [Apple Developer Program](https://developer.apple.com/help/glossary/developer-id-certificate/). При выборе этого варианта начните с [регистрации программы](https://developer.apple.com/help/account/membership/program-enrollment).
-
-1. На Mac создайте запрос сертификата через Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority. Укажите свою почту, имя ключа и сохранение на диск. Подробности: [инструкция Apple по CSR](https://developer.apple.com/help/account/certificates/create-a-certificate-signing-request).
-2. В аккаунте Apple откройте Certificates, Identifiers & Profiles и создайте сертификаты **Developer ID Application** и **Developer ID Installer**, используя запрос сертификата. Скачайте и откройте `.cer`, чтобы добавить сертификаты в Keychain. Для создания нужен доступ Account Holder; порядок описан у [Apple](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/).
-3. Проверьте, что обе идентичности доступны вместе с приватными ключами. Используйте их точные названия в команде сборки ниже. Приватные ключи сохраняются в Keychain этого Mac.
-4. Настройте профиль нотарификации интерактивно:
-
-   ```bash
-   xcrun notarytool store-credentials PAGEVAULT_NOTARY
-   ```
-
-   Утилита запросит данные аккаунта и проверит их перед сохранением в Keychain. Для входа с Apple Account используется пароль приложения и Team ID. Не включайте эти данные, приватные ключи или их экспорт в репозиторий.
-
-### Подпись и нотарификация
-
-После настройки сертификатов соберите пакет с доверенной подписью:
-
-```bash
-go run ./cmd/package-macos \
-  --sign-app "Developer ID Application: YOUR NAME (TEAMID)" \
-  --sign-installer "Developer ID Installer: YOUR NAME (TEAMID)"
-```
-
-Без `--unsigned` требуются обе идентичности. Программа подписывается с hardened runtime до упаковки, затем подписывается продуктовый PKG. Сертификаты/приватные ключи должны быть настроены локально; их не следует добавлять в репозиторий.
-
-После подписанной сборки выполните нотарификацию с заранее настроенным профилем Keychain:
-
-```bash
-xcrun notarytool submit dist/PageVault-1.3.0-macOS.pkg --keychain-profile PAGEVAULT_NOTARY --wait
-xcrun stapler staple dist/PageVault-1.3.0-macOS.pkg
-xcrun stapler validate dist/PageVault-1.3.0-macOS.pkg
-pkgutil --check-signature dist/PageVault-1.3.0-macOS.pkg
-(cd dist && shasum -a 256 PageVault-1.3.0-macOS.pkg > PageVault-1.3.0-macOS.pkg.sha256)
-```
-
-Stapling меняет байты PKG: последняя команда пересчитывает checksum для итогового файла. Перед публикацией пакета как подписанного и нотарифицированного проверьте эти шаги и установку на чистой системе. Выпуск 1.3.0 использует явно обозначенный неподписанный пакет. Процесс подписи описан у [Apple](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
-
-ZIP расширения для отдельной ручной установки собирается отдельно:
-
-```bash
-go run ./cmd/release --extension-only
-```
-
-В `PageVault-Extension-1.3.0.zip` файл `manifest.json` лежит в корне, без Go-программ и установщиков. После распаковки выберите эту папку при загрузке расширения. Полный комплект создаётся командой `go run ./cmd/release`.
+For development, `go run ./cmd/release` builds the full ZIP and six hosts, `go run ./cmd/release --extension-only` builds the extension ZIP, and `go run ./cmd/package-macos --unsigned` builds the universal PKG. The universal executable is ad-hoc signed, which does not establish developer identity or notarization. See [verification](VERIFICATION.md).

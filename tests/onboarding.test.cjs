@@ -29,7 +29,7 @@ async function fixture(options = {}) {
     window.chrome = {
       runtime: {
         id: 'ijkioljfdaaplhaldbdpabckkfcieiee',
-        getManifest: () => ({ version: '1.3.0' }),
+        getManifest: () => ({ version: '1.4.0' }),
         getPlatformInfo: async () => {
           if (fixture.platformFailure) throw Error('platform lookup failed');
           return { os: 'mac' };
@@ -135,7 +135,7 @@ test('a shared connection check disables both buttons, recovers and preserves un
       fixture.reject = false;
       fixture.host = {
         connected: true,
-        version: '1.3.0',
+        version: '1.4.0',
         schema_version: 1,
         db_path: '/restored.sqlite3',
       };
@@ -193,7 +193,8 @@ test('rejected capture recovery displays its error and retries the displayed rev
         id: 'synthetic',
         revision: 3,
         title: 'Test capture',
-        url: 'https://example.org/',
+        url: 'https://example.org/unique-page',
+        createdAt: Date.UTC(2026, 0, 2, 12),
         error: 'Invalid capture',
         bytes: 100,
       },
@@ -201,6 +202,11 @@ test('rejected capture recovery displays its error and retries the displayed rev
   });
   try {
     await page.getByText('Invalid capture').waitFor();
+    assert.match(
+      await page.locator('#rejected-list').innerText(),
+      /https:\/\/example\.org\/unique-page/,
+    );
+    assert.match(await page.locator('#rejected-list').innerText(), /2026/);
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => fixture.action), {
       type: 'queue.retry',

@@ -5,20 +5,20 @@ test('connection states preserve compatible older hosts and reject known incompa
   const { connectionState } = await import('../extension/lib/connection.js');
   const offline = connectionState(
     { connected: false, error: 'cannot open existing archive' },
-    '1.3.0',
+    '1.4.0',
   );
   assert.equal(offline.kind, 'unavailable');
   assert.equal(offline.usable, false);
   assert.match(offline.error, /cannot open/);
   for (const [version, kind] of [
-    ['1.3.0', 'ready'],
+    ['1.4.0', 'ready'],
     ['1.2.0', 'update'],
     ['1.4.0', 'ready'],
     ['unknown', 'ready'],
   ]) {
     const state = connectionState(
       { connected: true, version, schema_version: 1, db_path: '/archive.sqlite3' },
-      '1.3.0',
+      '1.4.0',
     );
     assert.equal(state.kind, kind);
     assert.equal(state.usable, true);
@@ -26,7 +26,7 @@ test('connection states preserve compatible older hosts and reject known incompa
   }
   const incompatible = connectionState(
     { connected: true, version: '2.0.0', schema_version: 2 },
-    '1.3.0',
+    '1.4.0',
   );
   assert.equal(incompatible.kind, 'incompatible');
   assert.equal(incompatible.usable, false);

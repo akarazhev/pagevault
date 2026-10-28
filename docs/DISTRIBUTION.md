@@ -1,52 +1,7 @@
-# Распространение PageVault через GitHub Releases
+# Distribution and support
 
-PageVault распространяется бесплатно под MIT через [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Этот способ выбран 28 октября 2026 года: пользователь скачивает готовый комплект, регистрирует локального помощника и загружает распакованное расширение. Публикация в магазинах и регистрационные взносы не входят в текущую схему.
+PageVault is free and distributed as named GitHub Release assets, including the full ZIP, standalone extension ZIP, unsigned macOS PKG and their SHA-256 files. The extension is loaded unpacked and upgraded manually. The PKG is not signed or notarized. No store submission or paid account is required. See [installation](INSTALLATION.md) and [upgrading](UPGRADING.md).
 
-Один исполняемый файл обслуживает Native Messaging для браузера и MCP для локального агента. Для работы готового комплекта не нужны Go, Node.js или отдельная служба SQLite.
+For a release, run the local gates in [verification](VERIFICATION.md), build all three artifacts, inspect their content and verify checksums, and require the hosted CI checks on the release commit. Stage a draft, download and verify its assets, then publish the matching tag. Keep previous release assets and tags intact. Do not claim cross-compilation or CI is certification of every hardware and browser combination.
 
-## Файлы выпуска
-
-| Файл | Состав |
-|---|---|
-| `PageVault-1.3.0.zip` | Расширение, исходники, лицензии, документация, скрипты установки и шесть готовых программ Windows/macOS/Linux на amd64/arm64 |
-| `PageVault-1.3.0-macOS-unsigned.pkg` | Помощник macOS 13+ для Intel и Apple Silicon, установка для текущего пользователя с выбором браузеров |
-| `PageVault-Extension-1.3.0.zip` | Только расширение и MIT LICENSE, `manifest.json` в корне; удобно вместе с macOS PKG |
-| Соответствующие `.sha256` | SHA-256 каждого файла выпуска; внутри полного ZIP также есть `bin/SHA256SUMS` для шести программ |
-
-Автоматические ссылки GitHub **Source code** дают исходники из тега без готовых программ. Обычному пользователю нужен именованный ZIP или PKG из таблицы. Команды сборки и установки: [INSTALLATION.md](INSTALLATION.md).
-
-Полный ZIP создаётся командой `go run ./cmd/release`, отдельный ZIP расширения — с `--extension-only`, macOS PKG — `go run ./cmd/package-macos --unsigned`. Все три файла и их контрольные суммы прикладываются к одному выпуску с тегом `v1.3.0`.
-
-## Первый запуск
-
-1. Скачать полный комплект из GitHub Releases и распаковать в постоянную папку. На macOS можно вместо этого выбрать PKG и отдельный ZIP расширения.
-2. Зарегистрировать помощника для своего браузера через комплектный скрипт или macOS Installer. Установщик сохраняет фактический путь SQLite в соседнем `pagevault.json`.
-3. Открыть страницу расширений браузера, включить «Режим разработчика», выбрать «Загрузить распакованное расширение» и указать папку с `manifest.json`. В полном комплекте это `pagevault/extension/`.
-4. Открыть настройки PageVault, нажать «Проверить подключение» и сверить версию помощника и путь базы. При отсутствии связи экран даёт ссылку на GitHub Releases и повторную проверку.
-5. Включить запись для нужного сайта и сохранить страницу. Для агента отдельно настроить запуск установленной программы с командой `mcp` по [MCP.md](MCP.md).
-
-Браузер запускает `com.pagevault.host` через stdin/stdout по [Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging). Загрузка расширения сама не устанавливает системный компонент.
-
-## macOS без Developer ID
-
-В текущем выпуске PKG явно помечен `-unsigned.pkg`. У программы есть ad-hoc подпись для запуска, но нет доверенной подписи Developer ID и нотарификации. Для выбранного способа распространения аккаунт Apple Developer не используется.
-
-Если macOS блокирует открытие скачанного пакета, пользователь может разрешить конкретный файл в разделе «Конфиденциальность и безопасность», когда это допускает политика его Mac. Порядок приведён в [инструкции Apple](https://support.apple.com/en-us/102445). ZIP также может попадать под системные проверки. Глобальное отключение Gatekeeper не требуется.
-
-Developer ID и нотарификацию можно добавить отдельным решением в будущем. Поддержка подписанной сборки остаётся доступна; настройка описана в [INSTALLATION.md](INSTALLATION.md#первая-настройка-подписи). Проверка на чистой системе и запуск готовых Windows/Linux-программ остаются отдельными проверками, которые не заменяются кросс-компиляцией. Фактические результаты: [VERIFICATION.md](VERIFICATION.md).
-
-## ID и обновления
-
-Публичный ключ закрепляет ID распакованного расширения `ijkioljfdaaplhaldbdpabckkfcieiee`; native-регистрация разрешает именно его. При установке из GitHub Releases ключ и ID сохраняются.
-
-Обновления расширения и помощника выполняются вручную из нового выпуска. Перед заменой дождитесь пустой очереди и остановите браузер и MCP-процессы. Сохраните путь папки расширения, замените её файлы, повторите установку помощника для тех же браузеров, затем обновите расширение на странице управления. Настройки, очередь и SQLite сохраняются при обновлении без удаления расширения. Подробности: [UPGRADING.md](UPGRADING.md).
-
-## Open source и приватность
-
-Код PageVault распространяется под [MIT](../LICENSE) с сохранением уведомлений лицензии. Зависимости сохраняют собственные лицензии; полный комплект содержит [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), включая оригинальные условия MCP SDK.
-
-Публичный ключ расширения входит в исходники. Приватные ключи, секреты, личные SQLite, резервные копии и журналы пользовательских архивов не входят в файлы выпуска. Лицензия программы не передаёт права на сохранённые сайты или личные данные.
-
-Обработка URL, содержимого страниц, локальной очереди, SQLite и отдельного доступа агента описана в [PRIVACY.md](PRIVACY.md). Подключение облачной модели может передавать прочитанные сведения её провайдеру.
-
-Прежние материалы Chrome Web Store сохранены в [архиве подготовки](CHROME_WEB_STORE.md); они не являются текущим планом публикации.
+Use GitHub issues for reproducible bugs and feature requests; remove private archive data from reports. For security vulnerabilities use [private reporting](https://github.com/akarazhev/pagevault/security/advisories/new). See [support and readiness](PRODUCTION_READINESS.md) and [contributing](../CONTRIBUTING.md).

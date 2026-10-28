@@ -29,6 +29,9 @@ export function date(value) {
 export function number(value) {
   return Number(value || 0).toLocaleString('en-US');
 }
+export function count(value, singular, plural = singular + 's') {
+  return `${number(value)} ${Number(value) === 1 ? singular : plural}`;
+}
 export function bytes(value) {
   const n = Number(value || 0);
   if (n < 1024) return `${n} B`;

@@ -24,9 +24,9 @@ const { playwright, browserOptions, serveProject } = require('../tests/helpers.c
         ({ version, connected }) => {
           const stamp = '2026-10-28T12:00:00Z';
           const rows = [
-            'Заметки проекта: планы и решения',
-            'Обсуждение новой функции',
-            'Документация по установке',
+            'Project notes: plans and decisions',
+            'Discussion of a new feature',
+            'Installation documentation',
           ].map((title, i) => ({
             id: i + 1,
             url: `https://example.org/notes/${i + 1}`,
@@ -39,32 +39,28 @@ const { playwright, browserOptions, serveProject } = require('../tests/helpers.c
             latest_capture_id: i + 1,
           }));
           const blocks = [
-            { type: 'heading', level: 2, text: 'Решения по проекту' },
+            { type: 'heading', level: 2, text: 'Project decisions' },
             {
               type: 'paragraph',
-              text: 'Сохраняем важные заметки, обсуждения и примеры в личный архив. Текст, таблицы и код остаются доступны для поиска и чтения агентом.',
+              text: 'Save important notes, discussions, and examples in a local archive. Text, tables, and code remain searchable and accessible to an agent.',
             },
             {
               type: 'list',
-              items: [
-                'Выбрать сайты для записи',
-                'Сохранить загруженное содержимое',
-                'Найти нужное в локальном архиве',
-              ],
+              items: ['Choose sites to record', 'Save loaded content', 'Search the local archive'],
             },
-            { type: 'heading', level: 3, text: 'План работы' },
+            { type: 'heading', level: 3, text: 'Work plan' },
             {
               type: 'table',
               rows: [
-                ['Задача', 'Состояние'],
-                ['Локальное хранение', 'Готово'],
-                ['Доступ через MCP', 'Готово'],
+                ['Task', 'Status'],
+                ['Local storage', 'Done'],
+                ['MCP access', 'Done'],
               ],
             },
             {
               type: 'code',
               language: 'javascript',
-              text: 'const notes = ["идея", "решение"];\nconsole.log(notes.join("\\n"));',
+              text: 'const notes = ["idea", "decision"];\nconsole.log(notes.join("\\n"));',
             },
           ];
           const host = {
@@ -74,7 +70,7 @@ const { playwright, browserOptions, serveProject } = require('../tests/helpers.c
             db_path: connected
               ? '/Users/demo/Library/Application Support/PageVault/archive.sqlite3'
               : '',
-            error: connected ? '' : 'Локальный помощник недоступен',
+            error: connected ? '' : 'Local helper unavailable',
           };
           window.chrome = {
             runtime: {
@@ -82,6 +78,7 @@ const { playwright, browserOptions, serveProject } = require('../tests/helpers.c
               getManifest: () => ({ version }),
               getPlatformInfo: async () => ({ os: 'mac' }),
               sendMessage: async (message) => {
+                if (message.type === 'queue.list') return { ok: true, data: [] };
                 if (message.type === 'status')
                   return {
                     ok: true,

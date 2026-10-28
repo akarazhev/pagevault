@@ -1,58 +1,21 @@
-# Адаптеры сайтов
+# Site adapters
 
-Общий парсер работает на всех разрешённых обычных HTTP/HTTPS-страницах. Адаптер нужен, когда полезно дополнительно получить специфические поля: номер issue, автора темы, ID товара, название проекта.
+The generic extractor handles permitted HTTP(S) pages. An adapter adds site-specific JSON metadata without replacing generic extraction. See `extension/adapters/example.js` and `gitlab.js`. Register an adapter with synchronous `matches({document, url})` and `extract({document, url})` functions; the latter returns JSON-compatible data for `metadata.site_data`. Add its local file to `CAPTURE_FILES` in `extension/lib/config.js` after `extractor.js` and before `content.js`, reload the extension and tab, and capture a page.
 
-## 1. Создайте локальный модуль
+Multiple matching adapters merge metadata in registration order; the last successful adapter sets `source.adapter`. An adapter error becomes a warning and generic extraction continues. Use loaded DOM, preserve useful source IDs and links, avoid DOM nodes and cycles in results, and add synthetic fixtures for missing and present site elements. Remote adapter code is not loaded.
 
-Например, `extension/adapters/forum.js`:
+Example adapter:
 
 ```javascript
 (() => {
   PageVaultExtractor.registerAdapter({
-    id: 'my-forum',
-    matches({ document, url }) {
-      return new URL(url).hostname === 'forum.example.org';
+    id: 'forum',
+    matches({ url }) { return new URL(url).hostname === 'forum.example.org'; },
+    extract({ document }) {
+      return { topic_id: document.querySelector('[data-topic-id]')?.dataset.topicId || '' };
     },
-    extract({ document, url }) {
-      return {
-        kind: 'forum-topic',
-        topic_id: document.querySelector('[data-topic-id]')?.dataset.topicId || '',
-        author: document.querySelector('.topic-author')?.textContent.trim() || ''
-      };
-    }
   });
 })();
 ```
 
-Методы синхронные. `matches()` определяет применимость; `extract()` возвращает обычный JSON-совместимый объект для `metadata.site_data`. Общий разбор содержимого при этом сохраняется.
-
-## 2. Подключите файл
-
-Добавьте его в массив `CAPTURE_FILES` в `extension/lib/config.js` **после** `extractor.js` и **до** `content.js`:
-
-```javascript
-export const CAPTURE_FILES = [
-  'extractor.js',
-  'adapters/gitlab.js',
-  'adapters/forum.js',
-  'content.js'
-];
-```
-
-Все модули поставляются внутри расширения. Удалённая загрузка кода адаптеров не используется.
-
-## 3. Перезагрузите и проверьте
-
-Обновите расширение на странице управления расширениями и перезагрузите нужную вкладку. Сделайте ручной снимок. В JSON должен измениться `source.adapter`, а поля адаптера появятся в `metadata.site_data`.
-
-Если несколько адаптеров подходят, их метаданные объединяются в порядке регистрации; последний успешный задаёт `source.adapter`. Ошибка адаптера записывается как предупреждение и оставляет общий разбор доступным.
-
-## Правила адаптера
-
-- Используйте уже загруженный DOM и устойчивые признаки сайта.
-- Возвращайте только нужные JSON-значения; не добавляйте функции, DOM-узлы или циклические объекты.
-- Сохраняйте исходные ссылки и ID, чтобы результат можно было проверить.
-- Добавляйте тестовую HTML-страницу с характерными случаями.
-- Проверяйте, что отсутствие специфического элемента оставляет общий снимок полезным.
-
-Готовые примеры: `gitlab.js` и неактивный `example.js`. Адаптер GitLab распознаёт признаки приложения и URL; особенности конкретной версии GitLab могут потребовать уточнения селекторов.
+Add `adapters/forum.js` between `extractor.js` and `content.js` in `CAPTURE_FILES`; reload and take a manual capture. Inspect `source.adapter`, `metadata.site_data` and warnings in exported JSON. Test absent elements and adapter exceptions as well as the normal case.

@@ -1,17 +1,8 @@
-# Обновление установленной Go-версии
+# Upgrading and backups
 
-Для первого запуска используйте установку из README. Перенос данных из неиспользовавшейся Python-версии не требуется и не реализуется отдельным механизмом.
+1. Let the extension queue drain; review rejected captures in settings. Note the actual database path.
+2. Back up SQLite with the SQLite CLI `.backup` command. Alternatively close all browser, helper and MCP processes and copy the database with any existing `-wal` and `-shm` files. Copying only the database during writes can omit WAL data.
+3. Fully quit the browser, including background processes, and stop MCP clients. Replace the bundle while keeping the extension directory path and the installed extension, which owns settings and the queue.
+4. Run the new installer for the same browsers. Existing configured database paths are preserved; explicitly pass the existing path with `--db` or `-Db` if needed. Refresh the extension on the browser extensions page, restart clients, and verify helper version and database path in settings.
 
-1. Проверьте путь базы и дождитесь пустой очереди. Для резервной копии используйте SQLite `.backup` либо полностью завершите браузер/помощник перед копированием базы и существующих WAL-файлов.
-2. Полностью завершите браузер вместе с фоновыми процессами и отключите PageVault в MCP-клиенте, если он подключён. Это освобождает работающий исполняемый файл помощника, что особенно важно в Windows.
-3. Замените файлы проекта, сохранив прежний путь папки `extension`. Не удаляйте расширение из браузера: так сохранятся его настройки и очередь.
-4. Запустите установщик для того же браузера: `bash install.sh chrome` или `install-windows.cmd`. Для нескольких браузеров повторите установку отдельно.
-5. Запустите браузер и нажмите «Обновить» у PageVault на странице расширений. Проверьте путь базы и подключение; переподключите MCP-клиент.
-
-Повторная установка без `--db` сохраняет путь из существующего `pagevault.json`. Явный `--db` выбирает другой файл, но не переносит данные. Файлы программы и конфигурации разделены по браузерам; SQLite может быть общей.
-
-macOS PKG дополнительно использует `--preserve-registered-db`: при переходе с нестандартного `--runtime-dir` он берёт путь из конфигурации реально зарегистрированного помощника. Рабочая стандартная регистрация заменяется только после проверки старой конфигурации; старый runtime остаётся на месте. При повреждённом манифесте/конфигурации сначала исправьте выбор базы явным `--db`. Подробности установки из GitHub Releases: [INSTALLATION.md](INSTALLATION.md).
-
-Установщик готовит новые файлы до замены действующих и при ошибке пытается вернуть прежние. Если восстановлению мешают внешние условия, резервная копия сохраняется, а ошибка сообщает её путь. База защищена от совпадения с путями программы, конфигурации и манифеста.
-
-Команда `uninstall` снимает регистрацию выбранного браузера, сохраняя SQLite и программные файлы. Для повторной установки помощника удалять расширение не нужно.
+Do not delete or recreate the archive during upgrade. SQLite schema remains version 1. An extension removal deletes its browser-owned queue; it does not delete the SQLite archive. See [installation](INSTALLATION.md) and [queue recovery](PRODUCTION_READINESS.md).

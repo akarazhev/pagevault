@@ -15,8 +15,19 @@ export default [
   js.configs.recommended,
   {
     files: ['**/*.{js,cjs,mjs}'],
-    languageOptions: { globals: { ...globals.browser, ...globals.node, chrome: 'readonly' } },
     rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }] },
+  },
+  {
+    files: ['extension/**/*.js'],
+    languageOptions: { globals: { ...globals.browser, chrome: 'readonly' } },
+  },
+  {
+    files: ['scripts/**/*.{js,cjs,mjs}', 'eslint.config.js'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['tests/**/*.{js,cjs,mjs}', 'scripts/store-screenshots.cjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser, chrome: 'readonly' } },
   },
   {
     files: ['tests/extractor.test.cjs'],

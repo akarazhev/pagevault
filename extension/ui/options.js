@@ -7,6 +7,7 @@ import {
   hostConnection,
   date,
   number,
+  count,
   bytes,
   downloadJSON,
 } from './common.js';
@@ -77,7 +78,7 @@ function render(status) {
   renderConnection(status);
   $('#last-saved').textContent = date(status.lastSavedAt);
   $('#queue-status').textContent =
-    `${number(status.pendingCount)} captures · ${bytes(status.queueBytes)}${status.rejectedCount ? ` · ${number(status.rejectedCount)} rejected` : ''}`;
+    `${count(status.pendingCount, 'capture')} · ${bytes(status.queueBytes)}${status.rejectedCount ? ` · ${number(status.rejectedCount)} rejected` : ''}`;
   renderSites(status.enabledOrigins || []);
   if (!settingsLoaded || !dirty) {
     $('#saveHtml').checked = !!status.settings.saveHtml;
@@ -196,7 +197,9 @@ async function renderRejected() {
     const row = el('div', 'site-row rejected-row');
     const details = el('div');
     details.append(
-      el('strong', 'break-text', item.title || item.url),
+      el('strong', 'break-text', String(item.title || 'Untitled capture').slice(0, 500)),
+      el('p', 'help break-text', String(item.url || 'URL unavailable').slice(0, 2048)),
+      el('p', 'help', `Queued: ${date(item.createdAt)}`),
       el('p', 'help break-text', item.error || 'The archive rejected this capture.'),
     );
     const actions = el('div', 'inline-actions');

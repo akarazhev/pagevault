@@ -1,147 +1,49 @@
-# Подключение локального агента через MCP
+# MCP access
 
-Начиная с PageVault 1.2.0 агент может читать сохранённые страницы через локальный MCP-сервер. Его запускает MCP-клиент командой `pagevault-host mcp`. Браузер продолжает сохранять страницы через Native Messaging в ту же SQLite.
-
-Сначала сохраните хотя бы одну страницу и проверьте путь SQLite в настройках расширения. MCP открывает только существующую базу со схемой 1; новую базу и каталоги он не создаёт.
-
-## Настройка клиента
-
-Нужен клиент с поддержкой MCP через stdio. Укажите абсолютный путь к готовой программе для вашей ОС и архитектуры, команду `mcp` и путь к существующему архиву. Например, для macOS arm64:
-
-```json
-{
-  "mcpServers": {
-    "pagevault": {
-      "command": "/absolute/path/PageVault/bin/darwin-arm64/pagevault-host",
-      "args": ["mcp", "--db", "/absolute/path/archive.sqlite3"]
-    }
-  }
-}
-```
-
-Это пример формата клиентов, использующих `mcpServers`; место файла и внешний формат настройки зависят от приложения агента. В `command` передаётся только программа, аргументы задаются отдельными элементами массива. Пробелы в путях не требуют дополнительных кавычек внутри значений JSON. `~`, `$PWD` и переменные оболочки в таком массиве не раскрываются автоматически.
-
-На macOS Intel замените каталог на `darwin-amd64`, на Linux — на `linux-amd64` или `linux-arm64`. На Windows используйте `windows-amd64/pagevault-host.exe` или `windows-arm64/pagevault-host.exe`; обратные слеши в JSON экранируются как `\\`.
-
-## Codex
-
-Добавьте сервер штатной командой Codex CLI, подставив абсолютные пути к программе и существующей базе:
+PageVault provides read-only MCP over stdio using an existing schema 1 SQLite archive. First capture a page and find the database path in settings. Use absolute paths for the executable and archive. For example, on macOS arm64:
 
 ```bash
 codex mcp add pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
 codex mcp get pagevault --json
 ```
 
-Команда сохраняет пользовательскую настройку в `~/.codex/config.toml`. Её эквивалент:
-
-```toml
-[mcp_servers.pagevault]
-command = "/absolute/path/PageVault/bin/darwin-arm64/pagevault-host"
-args = ["mcp", "--db", "/absolute/path/archive.sqlite3"]
-```
-
-Откройте новую сессию Codex и проверьте `pagevault` через `/mcp`. Затем попросите: «Через PageVault покажи сохранённые сайты и найди страницы о …». Настройка через CLI и формат TOML описаны в [официальной документации Codex](https://developers.openai.com/codex/mcp).
-
-## Claude Code
-
-Для доступа из разных проектов добавьте сервер в пользовательскую конфигурацию:
+Codex also supports `[mcp_servers.pagevault]` with `command` and `args` in its configuration; check `/mcp` in a new session. See [Codex MCP documentation](https://developers.openai.com/codex/mcp). For Claude Code:
 
 ```bash
 claude mcp add --transport stdio --scope user pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
 claude mcp get pagevault
 ```
 
-Claude Code сохраняет эту запись в `~/.claude.json`; `mcp get` проверяет соединение с сервером. Откройте новую сессию `claude` и посмотрите `/mcp`. Для подключения только в текущем проекте вместо `--scope user` используйте `--scope local`. Формат и области действия описаны в [документации Claude Code](https://code.claude.com/docs/en/mcp).
+See [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp). For other clients use their `mcpServers` format with the executable as `command` and `mcp`, `--db`, and the path as separate `args`. Use the binary for the correct OS and architecture. Windows JSON paths require escaped backslashes. Explicit absolute paths are portable across clients.
 
-Оба клиента могут работать одновременно: каждый запускает свой MCP-процесс и читает ту же SQLite. Новые страницы продолжает записывать браузер. Личные абсолютные пути и конфигурации клиентов не требуется добавлять в репозиторий.
+The database selection order is `--db`, `PAGEVAULT_DB`, adjacent `pagevault.json`, then the OS default. A PKG-installed per-browser helper has adjacent configuration; the core installer binary does not. The client starts and stops the process; no HTTP port or daemon is needed. MCP opens with SQLite read-only and query-only settings, validates schema, does not create an archive, and sees committed browser writes. Normal directory permissions may be needed for WAL/SHM files.
 
-Для проверки подключения достаточно списка инструментов. Запросы к архиву через облачные модели передают полученные URL и фрагменты провайдеру модели: OpenAI для Codex и Anthropic для обычного подключения Claude Code. Перед такой проверкой выберите подходящий архив; для проверки интеграции можно использовать отдельную искусственную базу.
+`list_sites`, `search_pages`, `get_page`, `list_versions` and `get_version` provide read-only access. Lists use `limit` (default 20, maximum 100), `offset`, `total` and `next_offset`; exact domain filtering does not include subdomains. Ordering and totals can change between requests while data changes. `get_page` returns accumulated observed blocks; `get_version` returns a snapshot without HTML. Full JSON is delivered in `text` chunks with Unicode code-point offsets, `next_offset`, `total_chars`, `document_hash` and `done`. Continue with the same ID and hash; if the document changes discard the chunks and restart. `max_chars` defaults to 8,000 and ranges from 1 to 16,000. Responses are bounded to 32 KiB JSON before the MCP wrapper; request frames are limited to 64 KiB.
 
-## Выбор базы и запуск процесса
+The process can read the entire selected archive; domain filtering is not an access boundary. Page contents are untrusted data, not instructions. A cloud-model client may send retrieved text to its provider. Use a synthetic archive to check connectivity and consult [privacy](PRIVACY.md).
 
-После macOS PKG выберите копию `~/Library/Application Support/PageVault/host/<browser>/pagevault-host`, подставив абсолютный путь в настройки клиента. Её соседний `pagevault.json` сохраняет фактический архив. Core-файл в папке `Installer/` служит источником регистрации и не имеет индивидуальной конфигурации браузера.
+## Client configuration examples
 
-Можно выбрать установленную копию помощника вместо файла из комплекта. Порядок выбора SQLite совпадает с native-режимом:
+Generic JSON for a client that uses `mcpServers`:
 
-1. Явный `--db`.
-2. Переменная окружения `PAGEVAULT_DB` процесса агента.
-3. `pagevault.json` рядом с запускаемым исполняемым файлом.
-4. Стандартный путь для ОС из README.
-
-Установленная копия имеет соседний `pagevault.json`; файл в `bin/<os>-<arch>/` исходного комплекта обычно его не имеет. Явный `--db` позволяет проверить выбор базы независимо от места установки.
-
-Клиент сам запускает процесс и закрывает его stdin при отключении. Отдельный HTTP-сервер, порт или служба не нужны. Вручную можно запустить:
-
-```bash
-./bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
+```json
+{"mcpServers":{"pagevault":{"command":"/absolute/path/pagevault-host","args":["mcp","--db","/absolute/path/archive.sqlite3"]}}}
 ```
 
-Программа будет ждать JSON-RPC в stdin; отсутствие приветствия ожидаемо. Для ручной остановки нажмите Ctrl+C. Для обычной работы настройте запуск в MCP-клиенте. В stdout идут только сообщения MCP, ошибки запуска — в stderr. Команда `serve` использует другой протокол с двоичными native-кадрами и для MCP не подходит.
+Codex TOML equivalent:
 
-## Инструменты
-
-| Инструмент | Параметры | Результат |
-|---|---|---|
-| `list_sites` | `limit`, `offset` | Домены по алфавиту и `page_count` |
-| `search_pages` | `query`, `domain`, `limit`, `offset` | Краткие сведения о страницах, включая `id`, URL, заголовок и счётчики |
-| `get_page` | `page_id`, `offset`, `max_chars`, `document_hash` | Части JSON накопленного архива страницы |
-| `list_versions` | `page_id`, `limit`, `offset` | Снимки от новых к старым; поле `id` — это `capture_id` |
-| `get_version` | `capture_id`, `offset`, `max_chars`, `document_hash` | Части JSON выбранного снимка без поля `html` |
-
-`page_id` и `capture_id` — положительные целые числа. Поиск без `query` возвращает все страницы; поиск текста учитывает Unicode case folding, включая кириллицу и `Straße`/`STRASSE`. `domain` фильтрует точный hostname без схемы и пути, без различия регистра; поддомены выбираются отдельно.
-
-Для списков `limit` по умолчанию 20, максимум 100; `offset` по умолчанию 0. Ответ содержит `items`, `total`, `limit`, `offset`, `next_offset`; `list_versions` также содержит краткие сведения `page`. Следующий запрос использует возвращённый `next_offset`; `null` означает конец. Ограничение байтов может уменьшить число элементов относительно `limit`.
-
-Длинные поля сводок отмечаются в `summary_truncated`. Если URL слишком длинный, `url` пуст, а `url_display` содержит только сокращённое представление; его нельзя использовать как исходный адрес. Полный URL доступен в JSON документа.
-
-Списки отражают текущие коммиты SQLite. При одновременных сохранениях или удалениях порядок и общее число элементов могут меняться между запросами. Для последовательного обхода без изменений временно отключите запись и не удаляйте страницы.
-
-## Снимки и накопленные блоки
-
-`get_page` возвращает документ с `archive_kind: "observed_blocks"`, сведениями о странице и уникальными блоками в порядке первого появления. Он объединяет наблюдения разных моментов времени и может содержать несколько редакций текста.
-
-`get_version` возвращает конкретное сохранённое состояние: URL, время, источник, структурированные блоки, метаданные и предупреждения. Числовые токены JSON сохраняются точно, в том числе числа больше 2⁵³. Поле `html` исключается. Формат блоков, таблиц и кода описан в [SCHEMA.md](SCHEMA.md).
-
-Оба инструмента возвращают JSON частями:
-
-| Поле | Значение |
-|---|---|
-| `archive_kind` | `observed_blocks` для страницы, `capture` для снимка |
-| `page_id` / `capture_id` | Идентификатор запрошенного документа |
-| `format` | `json` |
-| `text` | Очередная часть JSON; сама по себе может быть незавершённым JSON |
-| `offset` | Начальное смещение в кодовых точках Unicode |
-| `next_offset` | Смещение следующей части или `null` |
-| `total_chars` | Полная длина JSON в кодовых точках Unicode |
-| `document_hash` | SHA-256 полного JSON после исключения HTML для снимка |
-| `done` | `true`, когда документ прочитан до конца |
-
-Начните с `offset: 0` или без этого параметра. Для каждого следующего запроса передавайте прежний ID, возвращённые `next_offset` и `document_hash`. Соедините `text` по порядку и разбирайте JSON после получения всего документа. `max_chars` по умолчанию 8 000, допустимо от 1 до 16 000; смещения считаются в кодовых точках, не в байтах и не в кодовых единицах UTF-16.
-
-Хеш обязателен при `offset > 0` у обоих инструментов. Если документ изменился, отбросьте собранные части и начните с нуля. Накопленный архив меняется при записи браузера; содержимое существующего снимка не меняется, но после удаления SQLite может повторно использовать его ID. Защита хешем учитывает оба случая.
-
-Данные одного ответа ограничены 32 КиБ в JSON до обёртки MCP. SDK передаёт также текстовую копию для совместимости, поэтому полное сообщение протокола может быть больше. Сервер уменьшает части по фактическому размеру JSON с учётом экранирования; ориентируйтесь на `next_offset`, а не на запрошенный размер. Входной JSON-RPC кадр ограничен 64 КиБ.
-
-## Доступ и приватность
-
-MCP открывает SQLite с `mode=ro` и `query_only=ON`. Он не изменяет данные, схему или режим журнала, видит новые завершённые записи браузера и читает метаданные/блоки одного экспорта в одной транзакции. SQLite может использовать служебные WAL/SHM-файлы; для доступа к работающему архиву сохраните обычные права на каталог базы.
-
-Все пять инструментов помечены как операции чтения. Инструментов удаления, записи, произвольного SQL, выбора других файлов или посещения сайтов нет. Процессу доступен архив целиком: фильтр `domain` помогает искать, но не является границей доступа.
-
-Тексты страниц, заголовки, URL, метаданные и предупреждения — недоверенные данные. Агенту следует извлекать из них сведения, сохраняя ссылки и ограничения полноты, а не выполнять найденные внутри инструкции. MCP-сервер передаёт это правило в инструкциях и описаниях инструментов; поведение агента определяется также его клиентом и моделью.
-
-PageVault не отправляет архив по сети. Если локальный агент использует облачную модель, полученные через MCP сведения могут попасть к её провайдеру. Для полностью локальной обработки нужен агент с локальной моделью и соответствующей конфигурацией.
-
-## Проверка
-
-После настройки клиента вызовите `list_sites`, затем `search_pages` с текстом из сохранённой страницы. Используйте найденный `id` в `get_page` и `list_versions`, а `id` снимка — в `get_version`. Новое сохранение браузера должно стать видно без перезапуска MCP.
-
-Для разработчика:
-
-```bash
-go test -race ./internal/archive ./internal/mcpserver ./cmd/pagevault
+```toml
+[mcp_servers.pagevault]
+command = "/absolute/path/pagevault-host"
+args = ["mcp", "--db", "/absolute/path/archive.sqlite3"]
 ```
 
-Тесты используют официальный SDK-клиент, в том числе запускают настоящий скомпилированный CLI через stdio. Они работают с временными базами и не меняют пользовательскую регистрацию браузера.
+| Tool | Parameters | Result |
+| --- | --- | --- |
+| `list_sites` | `limit`, `offset` | Hostnames and page counts |
+| `search_pages` | `query`, `domain`, `limit`, `offset` | Page summaries |
+| `get_page` | `page_id`, `offset`, `max_chars`, `document_hash` | Accumulated archive JSON chunks |
+| `list_versions` | `page_id`, `limit`, `offset` | Snapshot summaries, newest first |
+| `get_version` | `capture_id`, `offset`, `max_chars`, `document_hash` | Snapshot JSON chunks without HTML |
 
-Протокол реализован [официальным Go SDK](https://github.com/modelcontextprotocol/go-sdk); общая модель описана в [архитектуре MCP](https://modelcontextprotocol.io/docs/learn/architecture).
+`page_id` and `capture_id` are positive integers. Search uses Unicode case folding; a domain is an exact hostname, case-insensitive. Empty query lists all pages. For either document tool `document_hash` is mandatory when `offset > 0`; pass the returned hash and `next_offset` unchanged. Summary fields may be listed in `summary_truncated`. If a URL is too long, `url` is empty and `url_display` is only a preview; obtain the full URL from document JSON. JSON numeric tokens retain precision, including integers above 2⁵³.

@@ -1,243 +1,29 @@
-# PageVault 1.3 — локальный архив страниц на Go и SQLite
+# PageVault
 
-PageVault сохраняет загруженное содержимое открытых веб-страниц в структурированном JSON в SQLite на вашем компьютере. Включите запись для сайта, затем читайте, прокручивайте и раскрывайте обсуждения как обычно. Расширение создаёт снимки и дополняет архив по мере изменения содержимого.
+PageVault saves loaded web page content as structured snapshots in a local SQLite archive. Enable recording for a site and browse normally; changes produce snapshots and the archive retains unique observed blocks. A generic extractor handles common content, and a GitLab adapter adds project metadata. Search, view versions, export JSON, or read the archive through a local MCP client.
 
-Общий парсер не привязан к сайту. Адаптер GitLab добавляет метаданные проекта, issue или merge request. Новые адаптеры подключаются отдельно от ядра.
+PageVault is free and distributed through [GitHub Releases](https://github.com/akarazhev/pagevault/releases). The browser extension and native helper run locally; there is no separate server or telemetry. Saved content can contain private data. Read the [privacy policy](docs/PRIVACY.md) before enabling a site.
 
-## Что изменилось в 1.3
+## Install and use
 
-- Сборщик пользовательского macOS PKG для Intel и Apple Silicon с выбором браузеров и сохранением действующего пути базы, включая прежний нестандартный runtime.
-- В настройках появился экран подключения: версия, SQLite, ошибка связи, шаги установки, выбор ОС и повторная проверка.
-- Отдельный ZIP расширения для ручной установки и политика приватности.
+Download `PageVault-1.4.0.zip` from Releases. It includes the extension, installers, six host binaries, source and documentation. The automatically generated GitHub source archives do not contain binaries. On macOS 13 or newer, `PageVault-1.4.0-macOS-unsigned.pkg` installs the helper for Intel and Apple Silicon; use it with `PageVault-Extension-1.4.0.zip` or the full bundle. Verify each download against its `.sha256` file. The PKG is unsigned and not notarized; macOS may block it. See [installation](docs/INSTALLATION.md) for Apple's individual-file exception and restrictions.
 
-PageVault распространяется бесплатно через [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Расширение устанавливается распакованным. macOS PKG явно помечен `-unsigned.pkg`: у него нет подписи Developer ID и нотарификации, поэтому macOS может потребовать ручного разрешения установки. Установка и сборка: [docs/INSTALLATION.md](docs/INSTALLATION.md).
+1. Extract the full bundle to a permanent location. On macOS/Linux run `./install.sh chrome`; on Windows run `install-windows.cmd` or `./install-windows.ps1 -Browser chrome`. Choose `chromium`, `edge`, or `brave` as appropriate, and repeat for each browser. The installer displays the helper and database paths.
+2. Open the browser's extensions page, enable developer mode, and load the unpacked `extension` folder (or the root of the standalone extension ZIP). Keep the folder in place. The fixed extension ID is `ijkioljfdaaplhaldbdpabckkfcieiee`.
+3. Open PageVault settings and check the helper connection and SQLite path. Visit an HTTP(S) page, enable recording for its site in the extension popup, and grant the requested site permission. Use Capture now for a manual snapshot. Disable recording at any time; saved data stays in SQLite.
 
-## MCP в 1.2
+See [installation](docs/INSTALLATION.md), [upgrading and backups](docs/UPGRADING.md), and [queue recovery](docs/PRODUCTION_READINESS.md). Wait for the queue to empty before removing the extension: its IndexedDB queue belongs to the browser.
 
-- Локальный агент читает архив через MCP: поиск страниц, накопленные блоки, история снимков и список сайтов.
-- Команда `pagevault-host mcp --db PATH` работает через stdio и открывает существующую SQLite только для чтения.
-- Большие документы передаются частями с Unicode-смещениями и проверкой хеша; сохранённый HTML агенту не выдаётся.
-- Расширение и локальный компонент распространяются вместе через GitHub Releases.
+## What is captured
 
-Подключение агента: [docs/MCP.md](docs/MCP.md). План распространения и open source: [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
+PageVault extracts loaded DOM content including text, headings, lists, tables, code, links and media references. Open shadow roots and accessible same-origin frames are handled where possible. Scroll or expand content to load it first. Closed shadow roots, cross-origin frames, image text, canvas and PDF viewers may be missing; media files are not downloaded. The archive does not recreate an interactive site offline. Snapshot warnings report limits reached. Defaults include 5,000 blocks, 1,000,000 text characters and 2,000,000 HTML characters. Optional sanitized HTML omits scripts, event handlers and form values and is never executed by the archive UI.
 
-## Переход на Go в 1.1
+The queue accepts up to 500 captures or 128 MiB; new captures are rejected when full, without deleting accepted entries. Restore the helper, retry delivery, then capture again. Permanently rejected entries can be exported, retried or discarded in settings. Accumulated blocks can include multiple revisions; choose a snapshot to see one state.
 
-- Локальный помощник, работа с SQLite, установщик и сборщик выпуска переписаны на **Go**. Готовый комплект содержит исполняемые файлы; Python и Go для запуска не нужны.
-- Расширение использует **один постоянный `connectNative`-порт**. Помощник открывает SQLite один раз и переиспользует соединение между запросами. Один процесс/соединение приходится на сеанс конкретного браузера; независимые браузеры имеют собственные процессы.
-- После обрыва связи следующий запрос открывает новый канал. Принятые снимки остаются в IndexedDB до подтверждения коммита SQLite.
-- Схема остаётся простой: страницы, снимки и накопленные блоки. Сериализация JSON использует стандартную библиотеку Go; отдельного слоя совместимости с Python нет.
-- Браузерный парсер и интерфейс остаются на JavaScript/HTML/CSS.
+## MCP and development
 
-Причина прежнего повторного открытия находилась в транспорте: `sendNativeMessage` запускал новый процесс на каждый запрос. Внутри Python-процесса соединение уже было единичным. В 1.1 изменены и транспорт, и нативная реализация.
+An MCP client launches `pagevault-host mcp --db /absolute/path/archive.sqlite3` over stdio, opening an existing schema 1 database read-only. Tools list sites, search pages, and retrieve accumulated content or snapshot versions. An agent using a cloud model may send retrieved content to its provider. See [MCP setup and limits](docs/MCP.md).
 
-## Возможности
+Development requires Go 1.27.3, Node 26.12.1, npm 12.2.1 and Playwright Chromium. Run `npm ci`, `go test ./...`, `npm test`, `npm run lint`, `npm run format:check`, and `npm run check`. Build release bundles with `go run ./cmd/release`, `go run ./cmd/release --extension-only`, and on macOS `go run ./cmd/package-macos --unsigned`. See [verification](docs/VERIFICATION.md) and [contributing](CONTRIBUTING.md).
 
-- Текст, заголовки, списки, таблицы, код с сохранением пробелов, ссылки и метаданные медиа.
-- Снимки при изменениях DOM, переходах SPA, периодической проверке и по кнопке.
-- Уникальные версии страницы и накопленный набор замеченных блоков.
-- Поиск, включая кириллицу, фильтр по сайту, просмотр версий и экспорт JSON.
-- Устойчивая очередь, повторная отправка и видимый статус ошибок.
-- Опциональный очищенный HTML для последующего разбора.
-- Русский интерфейс; локальная пользовательская установка без отдельного HTTP-сервера.
-- MCP через stdio для чтения архива локальным агентом.
-
-## Требования и состав
-
-Настольный Chrome, Chromium, Edge или Brave. Manifest задаёт нижнюю границу Chrome 116. Полный ZIP содержит готовые программы для **Windows, macOS и Linux, amd64 и arm64** в `bin/<os>-<arch>/`. Их выбор выполняют установочные скрипты. Для установки и работы не нужны Python, Node.js, компилятор Go или отдельный сервер SQLite.
-
-macOS-программы и PKG требуют macOS 13 или новее. PKG объединяет Intel и Apple Silicon; он устанавливает компонент для текущего пользователя.
-
-Сквозная проверка выпуска выполняется на Linux/Chromium. Сборка и переносимые тесты Windows/macOS не заменяют реальный запуск на этих ОС. Точные результаты: [docs/VERIFICATION.md](docs/VERIFICATION.md).
-
-Для изменения/сборки исходников нужен **Go 1.27.3+**; для браузерных тестов также **Node.js 26.12.1+**, **npm 12.2.1+** и Playwright 1.64.1. Используем актуальные стабильные выпуски; Node.js — ветку Current. Версия Node.js закреплена в `.nvmrc`, npm — в `packageManager` файла `package.json`. Драйвер SQLite `modernc.org/sqlite` собирается без CGO. Версии зависимостей закреплены в `go.mod`/`go.sum` и `package-lock.json`, лицензии включены в `THIRD_PARTY_NOTICES.md`.
-
-## Быстрая установка
-
-Откройте [GitHub Releases](https://github.com/akarazhev/pagevault/releases) и скачайте **`PageVault-1.3.0.zip`** — полный комплект для всех поддерживаемых ОС. Автоматические ссылки GitHub **Source code** содержат исходники без готовых программ.
-
-На macOS можно использовать отдельный **`PageVault-1.3.0-macOS-unsigned.pkg`** для установки помощника и **`PageVault-Extension-1.3.0.zip`** для расширения. PKG не подписан Apple; порядок ручного разрешения и установки описан в [docs/INSTALLATION.md](docs/INSTALLATION.md).
-
-### 1. Распакуйте полный комплект
-
-Распакуйте `PageVault-1.3.0.zip` в постоянную папку, например `Documents/PageVault`. Браузер будет читать расширение из подпапки `extension`, поэтому сохраните её на месте. При отдельном ZIP расширения выберите распакованную папку, содержащую `manifest.json`.
-
-### 2. Зарегистрируйте помощника
-
-Откройте терминал в корне проекта, где находятся `README.md`, `bin` и `extension`.
-
-**Windows, Chrome:** запустите `install-windows.cmd` двойным щелчком или выполните:
-
-```powershell
-.\install-windows.cmd
-```
-
-Для Edge:
-
-```powershell
-.\install-windows.cmd edge
-```
-
-**macOS или Linux, Chrome:**
-
-```bash
-bash install.sh chrome
-```
-
-Вместо `chrome` можно указать `chromium`, `edge` или `brave`. Для нескольких браузеров повторите установку для каждого.
-
-Установщик копирует Go-программу в отдельную папку выбранного браузера, сохраняет рядом путь к базе и регистрирует Native Messaging напрямую на исполняемый файл. Он выводит фактические пути. Обычная пользовательская установка не требует прав администратора.
-
-### 3. Подключите расширение
-
-1. Откройте `chrome://extensions`, `edge://extensions` или `brave://extensions`.
-2. Включите **Режим разработчика**.
-3. Нажмите **Загрузить распакованное расширение**.
-4. Выберите папку **`extension`**.
-5. Закрепите PageVault на панели браузера.
-
-Публичный ключ закрепляет ID `ijkioljfdaaplhaldbdpabckkfcieiee`. При обычной установке вводить его вручную не нужно.
-
-### 4. Включите запись
-
-В настройках PageVault проверьте статус **«SQLite подключена»** и путь к базе. Откройте обычную HTTP/HTTPS-страницу, включите сохранение для текущего сайта через меню расширения и подтвердите разрешение браузера. Дальше пользуйтесь страницей обычным способом. DevTools открывать не нужно.
-
-Ручной снимок сохраняет текущее состояние. Запись можно отключить для сайта в меню или настройках; уже сохранённые данные останутся в SQLite.
-
-## Последующие обновления
-
-1. Дождитесь пустой очереди в расширении и запишите путь базы из настроек.
-2. Полностью завершите браузер, включая его фоновую работу: это освобождает запущенный помощник, особенно при обновлении Windows.
-3. Замените файлы проекта новым комплектом. Сохраните прежний путь папки `extension` и не удаляйте само расширение: так сохранятся его настройки и очередь.
-4. Запустите новый установщик для того же браузера. Существующий путь базы сохраняется в конфигурации; при необходимости его можно явно передать через `--db` или `-Db`.
-5. Запустите браузер и нажмите **Обновить** у PageVault на странице расширений. Проверьте версию помощника 1.3.0 и прежний путь базы. Если агент использует MCP, завершите его процесс перед заменой программы и перезапустите после обновления.
-
-Для первого запуска достаточно обычной установки выше. Поскольку прежний проект не использовался, перенос данных из Python-версии не входит в выпуск. Подробнее об обновлении установленной Go-версии: [docs/UPGRADING.md](docs/UPGRADING.md).
-
-## Где находится база
-
-| ОС | Путь по умолчанию |
-|---|---|
-| Windows | `%USERPROFILE%\AppData\Local\PageVault\archive.sqlite3` |
-| macOS | `~/Library/Application Support/PageVault/archive.sqlite3` |
-| Linux | `~/.local/share/pagevault/archive.sqlite3` |
-
-Фактический путь виден в настройках и выводе установщика. Чтобы выбрать другой файл:
-
-```bash
-bash install.sh chrome --db "/absolute/path/my-archive.sqlite3"
-```
-
-Windows:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-windows.ps1 -Browser chrome -Db "D:\PageVault\archive.sqlite3"
-```
-
-Изменение пути выбирает другую базу, а не переносит данные автоматически. Для обновления указывайте существующий файл.
-
-SQLite работает в WAL. Для резервной копии можно использовать команду `.backup` утилиты SQLite. Другой вариант — полностью завершить браузер и помощник и сохранить файл базы вместе с существующими `-wal`/`-shm` файлами. Копирование только `.sqlite3` во время записи может пропустить данные из WAL.
-
-Удаление расширения не удаляет SQLite. Его IndexedDB-очередь принадлежит браузеру: перед удалением расширения дождитесь пустой очереди.
-
-## Снимки, накопленный архив и JSON
-
-Снимок содержит URL, заголовок, язык, время, источник, блоки, метаданные и предупреждения. Изменение семантического содержимого создаёт новую версию. Время сбора, причина, ID сессии и HTML не создают дубликаты состояний.
-
-У виртуализированных лент ранее показанные записи могут исчезать из DOM. Накопленный архив сохраняет уникальные наблюдавшиеся блоки, в том числе исчезнувшие. Он может содержать старую и новую редакции сообщения; для конкретного состояния страницы используйте снимки.
-
-Экспорт выбранной страницы скачивает JSON с `archive_kind: "observed_blocks"`. Исходные снимки также доступны через SQLite и локальный протокол. Схема: [docs/SCHEMA.md](docs/SCHEMA.md).
-
-Кнопка «Удалить страницу» удаляет её снимки, блоки и уже принятые копии URL в очереди. Если помощник недоступен, очередь сохраняется, а интерфейс показывает ошибку. Если запись сайта остаётся включённой, новые снимки после удаления могут создать страницу в архиве снова.
-
-## Полнота сохранения и ограничения
-
-Сохраняется загруженное содержимое доступного DOM, включая текст за пределами экрана и загруженные скрытые блоки. Открытый Shadow DOM и доступные iframe того же origin разбираются по возможности.
-
-Не загруженные записи нужно сначала открыть/прокрутить. Закрытый Shadow DOM, iframe другого origin, текст в изображениях/canvas и PDF-вьюеры требуют отдельных решений. Сейчас медиа представлены ссылками и метаданными; сами аудио, видео и картинки не скачиваются. Мгновенный элемент, появившийся и исчезнувший между снимками, может не попасть в архив. Это архив содержимого, а не восстановление интерактивного приложения офлайн.
-
-По умолчанию контрольная проверка — каждые 30 секунд, задержка изменений — 1,2 секунды; непрерывные изменения получают промежуточные снимки примерно каждые 10 секунд при исполняющейся вкладке. Лимиты: 5 000 блоков, 1 000 000 символов текста, 2 000 000 символов HTML; они настраиваются. Достижение лимита отмечается в предупреждениях снимка.
-
-Очередь рассчитана на 500 снимков или 128 МиБ. При заполнении новые снимки отклоняются с видимой ошибкой; принятые не удаляются. Восстановите помощника и повторите ручной снимок. Отправка повторяется периодически и по кнопке.
-
-Очищенный HTML исключает скрипты, обработчики событий и значения полей форм. Интерфейс архива не исполняет сохранённый HTML. Текст страницы может содержать личные данные — они станут частью выбранного вами локального архива.
-
-## Доступ для агента
-
-MCP-клиент запускает готовую программу с аргументами `mcp --db /absolute/path/archive.sqlite3`. Архив должен уже существовать; путь виден в настройках расширения. Программа читает базу, пока браузер продолжает сохранять страницы. Отдельная служба или HTTP-порт не требуются.
-
-Доступны `list_sites`, `search_pages`, `get_page`, `list_versions`, `get_version`. Настройка клиента, параметры и правила чтения частей JSON: [docs/MCP.md](docs/MCP.md).
-
-## Адаптеры
-
-Для обычных обсуждений, текста, кода и таблиц сначала используйте общий парсер. Для дополнительных полей создайте адаптер по `extension/adapters/example.js`, добавьте файл в `CAPTURE_FILES` в `extension/lib/config.js`, перезагрузите расширение и вкладку. Полная инструкция: [docs/ADAPTERS.md](docs/ADAPTERS.md).
-
-## Диагностика
-
-Готовая программа для вашей платформы находится в `bin/<os>-<arch>/`. Например, на Linux x64:
-
-```bash
-./bin/linux-amd64/pagevault-host diagnose --db "/absolute/path/archive.sqlite3"
-./bin/linux-amd64/pagevault-host install --browser chrome --dry-run
-./bin/linux-amd64/pagevault-host version
-```
-
-На macOS замените каталог на `darwin-arm64` или `darwin-amd64`; в Windows используйте `bin\windows-amd64\pagevault-host.exe` или вариант `windows-arm64`.
-
-Диагностика показывает путь SQLite, версии Go/SQLite, ID и PID процесса и число открытых соединений. Отдельный запуск `diagnose` сам создаёт отдельный короткий процесс; повторное использование относится к запросам внутри одного Native Messaging сеанса.
-
-| Симптом | Проверка |
-|---|---|
-| Помощник недоступен | Установщик запускался для того же браузера; готовая программа присутствует. Повторите установку и перезапустите браузер. |
-| Native host not found | Проверьте выбранный браузер; для нестандартного профиля используйте `--manifest-dir`. |
-| Access forbidden | Сравните ID расширения с `allowed_origins` регистрации; при собственном ключе используйте `--extension-id`. |
-| Ошибка замены программы при обновлении | Полностью завершите браузер и его помощник, затем повторите установку. |
-| Снимки остаются в очереди | Проверьте связь и свободное место, нажмите повторную отправку; точная ошибка видна в меню. |
-| Часть страницы отсутствует | Проверьте предупреждения снимка, раскройте/прокрутите раздел или увеличьте лимиты. |
-
-Установщик поддерживает `--runtime-dir`, `--manifest-dir`, `--extension-manifest`, `--extension-id`, `--db`, `--dry-run`. Опция `--preserve-registered-db` сохраняет путь базы из конфигурации действующей native-регистрации при переходе на другую папку программы; её использует PKG. `--home` и `--platform` предназначены для теста/предпросмотра; установка на другую ОС через `--platform` запрещена.
-
-Снять регистрацию одного браузера, сохранив базу и файлы помощника:
-
-```bash
-bash install.sh chrome --uninstall
-```
-
-## Разработка и сборка
-
-```bash
-go test ./...
-go vet ./...
-go build -trimpath -buildvcs=false -o bin/pagevault-host ./cmd/pagevault
-```
-
-Для браузерных тестов:
-
-```bash
-npm install --global npm@12.2.1
-npm ci
-npx playwright install chromium
-npm test
-npm run check
-```
-
-`PAGEVAULT_CHROMIUM_PATH` задаёт готовый Chromium. `PAGEVAULT_GO` выбирает компилятор для интеграционных тестов; `PAGEVAULT_HOST_BINARY` позволяет тестировать уже собранный помощник. Native-интеграция выполняется только на Linux во временном профиле и явно пропускается на других ОС, чтобы не менять их пользовательскую регистрацию браузера. Остальные переносимые Go/DOM-тесты остаются доступны.
-
-Собрать полный выпуск с шестью программами и SHA-256:
-
-```bash
-go run ./cmd/release
-```
-
-Только исходники: `go run ./cmd/release -source-only`. Повторно упаковать уже собранные программы: `go run ./cmd/release -skip-build`. Полная сборка требует доступа к закреплённым Go-зависимостям; готовые программы работают локально без этого доступа.
-
-Отдельный ZIP расширения: `go run ./cmd/release --extension-only`. macOS PKG без Developer ID: `go run ./cmd/package-macos --unsigned`. Оба файла вместе с полным комплектом и контрольными суммами распространяются через GitHub Releases. Дополнительный вариант подписанной сборки описан в [docs/INSTALLATION.md](docs/INSTALLATION.md).
-
-## Документация и лицензии
-
-- [Архитектура](docs/ARCHITECTURE.md), [протокол](docs/NATIVE_PROTOCOL.md), [схема](docs/SCHEMA.md).
-- [Обновление](docs/UPGRADING.md), [проверка выпуска](docs/VERIFICATION.md).
-- [MCP для агента](docs/MCP.md), [распространение через GitHub Releases](docs/DISTRIBUTION.md).
-- [Установка PKG](docs/INSTALLATION.md), [приватность](docs/PRIVACY.md), [архив материалов магазина](docs/CHROME_WEB_STORE.md).
-- Исходный код PageVault — MIT (`LICENSE`); зависимости — `THIRD_PARTY_NOTICES.md`.
-- Основания реализации: [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Go connections](https://go.dev/doc/database/manage-connections), [modernc SQLite](https://pkg.go.dev/modernc.org/sqlite).
+Documentation: [architecture](docs/ARCHITECTURE.md), [schema](docs/SCHEMA.md), [native protocol](docs/NATIVE_PROTOCOL.md), [adapters](docs/ADAPTERS.md), [distribution](docs/DISTRIBUTION.md), [readiness and support](docs/PRODUCTION_READINESS.md). Report security issues privately via [GitHub](https://github.com/akarazhev/pagevault/security/advisories/new). PageVault is MIT licensed; dependency notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

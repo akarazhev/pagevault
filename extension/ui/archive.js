@@ -6,6 +6,7 @@ import {
   notice,
   date,
   number,
+  count,
   bytes,
   errorText,
   externalLink,
@@ -70,7 +71,7 @@ function showList() {
       el(
         'span',
         'page-item-meta',
-        `${number(page.capture_count)} captures · ${date(page.last_seen)}`,
+        `${count(page.capture_count, 'capture')} · ${date(page.last_seen)}`,
       ),
     );
     button.addEventListener('click', () => selectPage(page));
@@ -105,7 +106,7 @@ async function loadList() {
       }
       offset = requestedOffset;
       pages = data.items;
-      $('#result-count').textContent = `${number(total)} pages`;
+      $('#result-count').textContent = `${count(total, 'page')}`;
       showList();
       break;
     }
@@ -195,7 +196,7 @@ function renderAccumulated() {
 }
 function renderCapture(capture) {
   $('#view-note').textContent =
-    `Page state at ${date(capture.captured_at)} · ${number(capture.blocks?.length)} blocks · ${capture.source?.adapter || 'generic'}. The original HTML is not executed.`;
+    `Page state at ${date(capture.captured_at)} · ${count(capture.blocks?.length, 'block')} · ${capture.source?.adapter || 'generic'}. The original HTML is not executed.`;
   const warnings = Array.isArray(capture.warnings) ? capture.warnings : [];
   notice(
     $('#capture-warnings'),
@@ -210,7 +211,7 @@ function updateVersions() {
   select.replaceChildren();
   for (const c of captures)
     select.append(
-      new Option(`${date(c.captured_at)} · ${number(c.block_count)} blocks`, String(c.id)),
+      new Option(`${date(c.captured_at)} · ${count(c.block_count, 'block')}`, String(c.id)),
     );
   if (captures.some((c) => String(c.id) === old)) select.value = old;
   $('#more-versions').hidden = captures.length >= capturesTotal;
@@ -261,7 +262,7 @@ async function selectPage(page) {
   $('#detail-host').textContent = page.hostname;
   $('#detail-link').replaceChildren(externalLink(page.url, page.url || page.url_display));
   $('#detail-meta').textContent =
-    `First seen: ${date(page.first_seen)} · updated: ${date(page.last_seen)} · ${number(page.capture_count)} captures`;
+    `First seen: ${date(page.first_seen)} · updated: ${date(page.last_seen)} · ${count(page.capture_count, 'capture')}`;
   $('#version-select').replaceChildren();
   $('#capture-warnings').hidden = true;
   $('#blocks').replaceChildren(el('p', 'empty-state', 'Reading saved blocks…'));

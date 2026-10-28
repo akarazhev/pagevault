@@ -52,12 +52,13 @@ var zipTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 var rootFiles = []string{
 	"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum",
 	"package.json", "package-lock.json", ".gitignore", ".nvmrc", "install.sh",
-	"install-windows.cmd", "install-windows.ps1",
+	"install-windows.cmd", "install-windows.ps1", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md",
+	".editorconfig", ".prettierignore", ".prettierrc.json", "eslint.config.js",
 }
 
 var docFiles = []string{
 	"ARCHITECTURE.md", "ADAPTERS.md", "SCHEMA.md", "NATIVE_PROTOCOL.md",
-	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "INSTALLATION.md", "PRIVACY.md", "CHROME_WEB_STORE.md", "extension-id.txt",
+	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "INSTALLATION.md", "PRIVACY.md", "CHROME_WEB_STORE.md", "PRODUCTION_READINESS.md", "extension-id.txt",
 }
 
 // Run validates source identity, optionally builds all supported platforms, and
@@ -421,7 +422,7 @@ func sources(root string) ([]entry, error) {
 			return nil, err
 		}
 	}
-	for _, dir := range []string{"extension", "cmd", "internal", "tests", "scripts"} {
+	for _, dir := range []string{"extension", "cmd", "internal", "tests", "scripts", ".github"} {
 		path := filepath.Join(root, dir)
 		if _, err := os.Lstat(path); os.IsNotExist(err) {
 			continue

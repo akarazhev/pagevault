@@ -523,3 +523,36 @@ func TestReleaseChecksumDirectoryPreservesOldOutput(t *testing.T) {
 		t.Fatalf("old artifact lost: %q, %v", got, err)
 	}
 }
+
+func TestCommunityAndDevelopmentSourcesShipSafely(t *testing.T) {
+	root := project(t)
+	names := []string{"CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", ".editorconfig", ".prettierignore", ".prettierrc.json", "eslint.config.js", "docs/PRODUCTION_READINESS.md", ".github/workflows/ci.yml", ".github/dependabot.yml", ".github/ISSUE_TEMPLATE/bug_report.md", ".github/PULL_REQUEST_TEMPLATE.md"}
+	for _, name := range names {
+		put(t, root, name, "source: "+name)
+	}
+	put(t, root, ".github/private.sqlite", "PRIVATE")
+	out := filepath.Join(root, "dist/source.zip")
+	if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	files := archive(t, out)
+	for _, name := range names {
+		f := files["pagevault/"+name]
+		if f == nil || content(t, f) != "source: "+name {
+			t.Errorf("missing or changed %s", name)
+		}
+	}
+	if files["pagevault/.github/private.sqlite"] != nil {
+		t.Error("included private database")
+	}
+	for _, name := range names {
+		err := Run(context.Background(), Options{Root: root, Output: filepath.Join(root, filepath.FromSlash(name)), SourceOnly: true})
+		if err == nil {
+			t.Errorf("accepted source %s as output", name)
+		}
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
+		if err != nil || string(b) != "source: "+name {
+			t.Fatalf("source %s changed: %v", name, err)
+		}
+	}
+}

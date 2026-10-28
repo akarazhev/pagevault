@@ -1,66 +1,23 @@
-# Локальный протокол
+# Native Messaging protocol
 
-Имя Native Messaging host: `com.pagevault.host`. Запросы и ответы — UTF-8 JSON с четырёхбайтовым префиксом длины в native byte order. В протокольном режиме stdout содержит только кадры; сообщения диагностики идут в stderr.
+The host `com.pagevault.host` exchanges UTF-8 JSON frames prefixed by a four-byte native-endian length. stdout contains frames only; diagnostics go to stderr. Requests contain `id` and `type`; responses contain the same `id`, `ok`, and either `data` or an `error` with `code` and `message`.
 
-Запрос:
+Commands include `ping`, `capture.save`, `pages.list`, `pages.get`, `captures.get`, `pages.export`, `pages.domains`, `stats`, and `pages.delete`. Delete requires explicit confirmation in the UI. Requests are limited to 32 MiB and responses to less than 1 MiB. Large capture and export JSON responses use `json_chunk`, `offset`, `next_offset`, `total_chars`, `done`, and `document_hash`; offsets count Unicode code points. Join chunks and parse only after completion; restart if the hash changes. Do not use JavaScript UTF-16 string length to compute offsets.
 
-```json
-{"id":"request-id","type":"stats"}
-```
+The extension uses a persistent `connectNative` port and matches responses by ID. Read requests time out after 20 seconds without closing the shared port; mutations await acknowledgement or a real disconnect. The next request reconnects after disconnection. A hung mutation may wait until the process ends. Accepted captures remain in IndexedDB until their matching revision is committed. See [architecture](ARCHITECTURE.md).
 
-Успех:
+## Commands and pagination
 
-```json
-{"id":"request-id","ok":true,"data":{"pages":10,"captures":25,"blocks":300,"db_bytes":100000,"db_path":"/path/archive.sqlite3"}}
-```
+| Type | Parameters | Result |
+| --- | --- | --- |
+| `ping` | none | Versions, schema, database path, host ID, process ID and connection count |
+| `capture.save` | `capture` | Page ID, capture ID, creation status and block count after commit |
+| `pages.list` | `query`, `domain`, `limit`, `offset` | Page summaries and total |
+| `pages.get` | `page_id`, `limit`, `offset` | Page summary and capture summaries |
+| `captures.get` | `capture_id`, `offset`, `chunk_size` | Original snapshot JSON chunk |
+| `pages.export` | `page_id`, `offset`, `chunk_size` | Observed-block archive JSON chunk |
+| `pages.domains` | `limit`, `offset` | Exact hostnames, page counts, total and `next_offset` |
+| `stats` | none | Page, capture and block counts, database size and path |
+| `pages.delete` | `page_id` | Cascading deletion confirmation |
 
-Ошибка:
-
-```json
-{"id":"request-id","ok":false,"error":{"code":"not_found","message":"..."}}
-```
-
-## Команды
-
-| Команда | Параметры | Результат |
-|---|---|---|
-| `ping` | — | Версии программы/схемы/Go/SQLite, путь базы, `host_id`, `process_id`, `db_connections` |
-| `capture.save` | `capture` | `page_id`, `capture_id`, `created`, `block_count` после коммита |
-| `pages.list` | `query`, `domain`, `limit`, `offset` | `items`, `total`, `limit`, `offset` |
-| `pages.get` | `page_id`, `limit`, `offset` | Краткая `page`, список `captures`, `total` |
-| `captures.get` | `capture_id`, `offset`, `chunk_size` | Часть исходного JSON снимка |
-| `pages.export` | `page_id`, `offset`, `chunk_size` | Часть JSON накопленного архива |
-| `pages.domains` | — | Домены и число страниц |
-| `stats` | — | Число страниц/снимков/блоков, размер и путь базы |
-| `pages.delete` | `page_id` | Подтверждение каскадного удаления |
-
-Браузерный интерфейс вызывает `pages.delete` после явного подтверждения пользователя.
-
-## Большие ответы
-
-Помощник принимает запросы до 32 МиБ и удерживает ответы ниже 1 МиБ. Для больших JSON используются части:
-
-```json
-{
-  "json_chunk": "...",
-  "offset": 0,
-  "next_offset": 120000,
-  "total_chars": 250000,
-  "done": false,
-  "document_hash": "sha256-of-the-complete-json"
-}
-```
-
-Клиент запрашивает следующую часть с `offset=next_offset`; индексы считаются по Unicode code points (Go rune). Нельзя рассчитывать следующий offset из JavaScript `string.length`: emoji могут занимать две UTF-16 позиции. Соедините части в строку и выполните `JSON.parse` только после `done:true`.
-
-`document_hash` должен совпадать у всех частей. Накопленный архив может измениться во время записи сайта: при смене хэша UI начинает чтение заново ограниченное число раз. Смешивание частей разных состояний недопустимо. Исходные JSON уже сохранённых снимков неизменны.
-
-## Транспорт расширения
-
-Content script отправляет `capture.submit` фоновому модулю. Тот проверяет origin и режим записи, помещает снимок в IndexedDB и вызывает Native Messaging. Страницы UI могут запрашивать архив через ограниченный список команд. Только успешный ответ `capture.save` удаляет соответствующую ревизию записи из очереди.
-
-С версии 1.1 транспорт использует один лениво открываемый `chrome.runtime.connectNative` Port на экземпляр фонового модуля. Все запросы разделяют порт, ответы сопоставляются по `id`. Go-помощник открывает SQLite один раз перед циклом чтения и закрывает при завершении процесса. `db_connections` равен 1 при обычной работе; `host_id` и PID остаются постоянными в сеансе.
-
-При настоящем `onDisconnect` ожидающие запросы получают ошибку, а следующий запрос создаёт новый порт. Чтение имеет срок ожидания 20 секунд: его истечение завершает только этот запрос, не отключает общий канал и не отменяет запись. Мутации ожидают подтверждение или настоящий разрыв связи. Это не позволяет позднему коммиту обогнать подтверждённое удаление страницы. При зависшем процессе мутация может оставаться ожидающей до его завершения; перезапуск браузера/помощника сохраняет принятые снимки в очереди.
-
-В одном процессе соединение SQLite переиспользуется; независимые браузеры и отдельные запуски CLI имеют собственные процессы/соединения. Отдельная команда `diagnose` не обращается к уже работающему браузерному процессу.
+For `pages.domains`, limit defaults to 200 and is capped at 200; offset defaults to zero. The byte limit can return fewer items than requested. Use the returned `next_offset` rather than adding the limit; null means the end. Hostnames are preserved exactly rather than truncated into misleading filters. List totals may change as the archive changes. Summary fields can be shortened with `summary_truncated`; a long URL is represented by `url_display` and an empty `url`, not a truncated clickable URL. Full values are available via chunked exports.
