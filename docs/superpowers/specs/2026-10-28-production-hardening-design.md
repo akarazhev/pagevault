@@ -22,7 +22,7 @@ Harden the existing architecture and prove its failure behavior with regression 
 
 ### Extension reliability
 
-- Reject captures outside native validation limits before enqueueing, including URLs over 65,536 Unicode code points. Existing permanently rejected queue entries must remain recoverable/visible and must not block unrelated valid captures. Preserve data until successful commit or an explicit user discard; distinguish permanent invalid_request from retryable delivery failures.
+- Reject captures outside native validation limits before enqueueing, including URLs over 65,536 Unicode code points. Existing permanently rejected queue entries must remain recoverable/visible and must not block unrelated valid captures. Provide explicit export, retry and discard controls. Preserve data until successful commit or an explicit user discard; distinguish permanent invalid_request from retryable delivery failures.
 - Charge table cell text once across plain/rich projections; preserve visible rich link labels at the exact text budget and account for following blocks.
 - Disconnect observers for removed/navigated same-origin iframe documents. Repeated iframe replacement must not retain orphaned document trees.
 - Bound HTML construction before allocation: attribute-heavy pages must not create arbitrarily large cloned DOM/serialized strings before applying maxHtmlChars. Retain sanitization and warnings.
@@ -30,7 +30,7 @@ Harden the existing architecture and prove its failure behavior with regression 
 
 ### Installation and release safety
 
-- A macOS core preinstall must run before payload replacement, using the bundled universal Go program from package Scripts. No Python/Node/jq runtime requirement. Check archives of all four browsers, including unselected browsers/default runtime configs, against every core payload destination (host and both license files), following existing alias-aware path safety. Abort before touching an archive if any collision or unreadable active registration prevents a safe decision.
+- A macOS core preinstall must run before payload replacement, using the bundled universal Go program from package Scripts. No Python/Node/jq runtime requirement. Check archives of all four browsers, including unselected browsers/default runtime configs, against every core payload destination (host and both license files), following existing alias-aware path safety. Also reject a payload destination containing a SQLite file header even if no standard registration identifies it, covering archives from nonstandard profiles. Abort before touching an archive if any collision or unreadable active registration prevents a safe decision.
 - New CLI preflight behavior is read-only and accepts an explicit user home; real user registrations/archives are never modified by tests. Keep current-user-home-only installation and reject root.
 - Publishing an artifact/checksum pair must preserve the previous pair on failure. Stage both, reject directory destinations and roll back partial publication; symlink/hardlink protections must retain their existing behavior. Reuse one internal publication helper for ZIP and PKG.
 - Installer/CLI/shell/PowerShell copy is English. Unsigned PKG remains explicitly labelled, and Gatekeeper restrictions stay documented.
