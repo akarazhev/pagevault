@@ -107,3 +107,39 @@ func TestInstallDryRunLeavesDestinationUntouched(t *testing.T) {
 		t.Fatal("dry-run modified home")
 	}
 }
+
+func TestPackagePreflightRejectsUnregisteredSQLitePayload(t *testing.T) {
+	for _, name := range []string{"pagevault-host", "LICENSE", "THIRD_PARTY_NOTICES.md"} {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			path := filepath.Join(home, "Library", "Application Support", "PageVault", "Installer", name)
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				t.Fatal(err)
+			}
+			original := []byte("SQLite format 3\x00synthetic archive bytes")
+			if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			var out, stderr bytes.Buffer
+			if got := run([]string{"package-preflight", "--home", home}, strings.NewReader(""), &out, &stderr, "host"); got == 0 {
+				t.Fatal("preflight accepted archive in payload destination")
+			}
+			got, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(got, original) {
+				t.Fatalf("archive changed: %v", err)
+			}
+		})
+	}
+}
+
+func TestPackagePreflightFreshHome(t *testing.T) {
+	home := t.TempDir()
+	var out, stderr bytes.Buffer
+	if got := run([]string{"package-preflight", "--home", home}, strings.NewReader(""), &out, &stderr, "host"); got != 0 {
+		t.Fatalf("fresh home rejected: %s", stderr.String())
+	}
+	entries, err := os.ReadDir(home)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("preflight wrote files: %v %v", entries, err)
+	}
+}

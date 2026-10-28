@@ -210,6 +210,41 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 		t.Fatal(cpus)
 	}
 	command(t, ctx, "/usr/bin/codesign", "--verify", "--strict", filepath.Join(payload, hostRel))
+	preinstall := filepath.Join(expanded, "core.pkg", "Scripts", "preinstall")
+	preflightHome := t.TempDir()
+	command(t, ctx, "/bin/sh", preinstall, output, "/", preflightHome)
+	entries, err := os.ReadDir(preflightHome)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("fresh preflight wrote files: %v %v", entries, err)
+	}
+	for _, name := range []string{"pagevault-host", "LICENSE", "THIRD_PARTY_NOTICES.md"} {
+		path := filepath.Join(preflightHome, "Library", "Application Support", "PageVault", "Installer", name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		db, err := archive.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+		before, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.CommandContext(ctx, "/bin/sh", preinstall, output, "/", preflightHome)
+		if out, err := cmd.CombinedOutput(); err == nil {
+			t.Fatalf("preinstall accepted archive %s: %s", name, out)
+		}
+		after, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(before, after) {
+			t.Fatalf("preinstall changed archive %s: %v", name, err)
+		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+	}
 	home := filepath.Join(t.TempDir(), "Пользователь с пробелами")
 	if err := os.CopyFS(home, os.DirFS(payload)); err != nil {
 		t.Fatal(err)
@@ -246,6 +281,7 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	command(t, ctx, "/bin/sh", preinstall, output, "/", home)
 	command(t, ctx, "/bin/sh", filepath.Join(expanded, "chrome.pkg", "Scripts", "postinstall"), output, "/", home)
 	after, err := os.ReadFile(customDB)
 	if err != nil || !bytes.Equal(before, after) {

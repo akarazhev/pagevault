@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"pagevault.local/pagevault/internal/artifact"
 	"pagevault.local/pagevault/internal/buildinfo"
 )
 
@@ -468,8 +469,7 @@ func writeZIP(output string, entries []entry, prefix string) error {
 		return err
 	}
 	defer os.Remove(f.Name())
-	h := sha256.New()
-	z := zip.NewWriter(io.MultiWriter(f, h))
+	z := zip.NewWriter(f)
 	for _, entry := range entries {
 		header := &zip.FileHeader{Name: prefix + entry.name, Method: zip.Deflate, Modified: zipTime}
 		header.SetMode(entry.mode)
@@ -506,24 +506,6 @@ func writeZIP(output string, entries []entry, prefix string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(f.Name(), output); err != nil {
-		return err
-	}
-	checksum, err := os.CreateTemp(filepath.Dir(output), ".pagevault-checksum-*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(checksum.Name())
-	_, writeErr := fmt.Fprintf(checksum, "%x  %s\n", h.Sum(nil), filepath.Base(output))
-	if writeErr == nil {
-		writeErr = checksum.Chmod(0644)
-	}
-	closeErr := checksum.Close()
-	if writeErr != nil {
-		return writeErr
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	return os.Rename(checksum.Name(), output+".sha256")
+	_, err = artifact.PublishPair(f.Name(), output)
+	return err
 }

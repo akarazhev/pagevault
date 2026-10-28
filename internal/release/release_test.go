@@ -501,3 +501,21 @@ printf '%s/%s' "$GOOS" "$GOARCH" > "$1"
 		})
 	}
 }
+
+func TestReleaseChecksumDirectoryPreservesOldOutput(t *testing.T) {
+	root := project(t)
+	output := filepath.Join(t.TempDir(), "release.zip")
+	if err := os.WriteFile(output, []byte("old artifact"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(output+".sha256", 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(context.Background(), Options{Root: root, Output: output, SourceOnly: true}); err == nil {
+		t.Fatal("expected checksum directory rejection")
+	}
+	got, err := os.ReadFile(output)
+	if err != nil || string(got) != "old artifact" {
+		t.Fatalf("old artifact lost: %q, %v", got, err)
+	}
+}

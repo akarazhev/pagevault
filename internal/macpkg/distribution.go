@@ -35,7 +35,7 @@ func distributionXML() []byte {
   <choice id="core" visible="false" start_selected="true" title="PageVault"><pkg-ref id="com.pagevault.host.core"/></choice>
 `)
 	for _, v := range browsers {
-		fmt.Fprintf(&b, "  <choice id=\"%s\" start_selected=\"%t\" title=\"%s\" description=\"Подключить PageVault к %s\"><pkg-ref id=\"com.pagevault.host.%s\"/></choice>\n", v.ID, v.ID == "chrome", v.Name, v.Name, v.ID)
+		fmt.Fprintf(&b, "  <choice id=\"%s\" start_selected=\"%t\" title=\"%s\" description=\"Connect PageVault to %s\"><pkg-ref id=\"com.pagevault.host.%s\"/></choice>\n", v.ID, v.ID == "chrome", v.Name, v.Name, v.ID)
 	}
 	fmt.Fprintf(&b, "  <pkg-ref id=\"com.pagevault.host.core\" version=\"%s\">core.pkg</pkg-ref>\n", buildinfo.Version)
 	for _, v := range browsers {
@@ -49,11 +49,11 @@ func distributionXML() []byte {
 func writeResources(dir string, unsigned bool) error {
 	note := ""
 	if unsigned {
-		note = "<p><strong>Пакет без подписи Developer ID и нотарификации.</strong> macOS может потребовать вручную разрешить установку в разделе «Конфиденциальность и безопасность». Загружайте PageVault со страницы GitHub Releases проекта.</p>"
+		note = "<p><strong>This package is unsigned and not notarized.</strong> macOS may require approval in Privacy &amp; Security. Download PageVault from the project GitHub Releases page.</p>"
 	}
 	pages := map[string]string{
-		"welcome.html":    fmt.Sprintf(`<html lang="ru"><meta charset="utf-8"><body><h1>PageVault %s</h1>%s<p>Локальный помощник сохраняет выбранные страницы в SQLite и даёт агенту доступ к архиву через MCP.</p><p>Установка выполняется для текущего пользователя. На следующем шаге выберите используемые браузеры; Chrome включён по умолчанию. Поддерживаются macOS 13 и новее, Intel и Apple Silicon.</p><p>При обновлении сохраняется путь действующего архива. Установщик попросит закрыть выбранные браузеры; после обновления переподключите MCP-клиент.</p></body></html>`, buildinfo.Version, note),
-		"conclusion.html": `<html lang="ru"><meta charset="utf-8"><body><h1>Помощник установлен</h1><p>Откройте браузер и настройки расширения PageVault, затем нажмите «Проверить подключение». Там будет показан фактический путь базы.</p><p>Включите запись для нужного сайта и сохраните страницу. Браузер сам запускает помощника; отдельную службу запускать не нужно.</p><p>Если подключаете Codex или Claude Code, выберите установленный pagevault-host из Library/Application Support/PageVault/host/ваш-браузер и команду mcp. Файл pagevault.json рядом с ним уже содержит путь архива.</p></body></html>`,
+		"welcome.html":    fmt.Sprintf(`<html lang="en"><meta charset="utf-8"><body><h1>PageVault %s</h1>%s<p>PageVault saves selected pages to a local SQLite archive and provides MCP access.</p><p>Install for the current user and select your browsers. Chrome is selected by default. Requires macOS 13 or later on Intel or Apple Silicon.</p><p>Upgrades preserve the active archive path. Close the selected browsers and reconnect your MCP client after upgrading.</p></body></html>`, buildinfo.Version, note),
+		"conclusion.html": `<html lang="en"><meta charset="utf-8"><body><h1>Host installed</h1><p>Open the PageVault extension settings and select Check connection to see the archive path.</p><p>Enable capture for a site and save a page. The browser starts the host automatically.</p><p>For Codex or Claude Code, select pagevault-host under Library/Application Support/PageVault/host/your-browser and use the mcp command. The adjacent pagevault.json contains the archive path.</p></body></html>`,
 	}
 	for name, page := range pages {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(page), 0644); err != nil {

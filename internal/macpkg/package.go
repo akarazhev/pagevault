@@ -3,18 +3,16 @@ package macpkg
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"pagevault.local/pagevault/internal/artifact"
 	"pagevault.local/pagevault/internal/buildinfo"
 )
 
@@ -138,7 +136,21 @@ func Build(ctx context.Context, opts Options) (Artifact, error) {
 			return Artifact{}, err
 		}
 	}
-	if err := invoke("/usr/bin/pkgbuild", nil, "--root", payload, "--identifier", "com.pagevault.host.core", "--version", buildinfo.Version, "--install-location", "/", filepath.Join(stage, "core.pkg")); err != nil {
+	scripts := filepath.Join(stage, "core-scripts")
+	if err := os.Mkdir(scripts, 0700); err != nil {
+		return Artifact{}, err
+	}
+	hostBytes, err := os.ReadFile(binary)
+	if err != nil {
+		return Artifact{}, err
+	}
+	if err := os.WriteFile(filepath.Join(scripts, "pagevault-host"), hostBytes, 0755); err != nil {
+		return Artifact{}, err
+	}
+	if err := os.WriteFile(filepath.Join(scripts, "preinstall"), []byte(preinstall()), 0755); err != nil {
+		return Artifact{}, err
+	}
+	if err := invoke("/usr/bin/pkgbuild", nil, "--scripts", scripts, "--root", payload, "--identifier", "com.pagevault.host.core", "--version", buildinfo.Version, "--install-location", "/", filepath.Join(stage, "core.pkg")); err != nil {
 		return Artifact{}, err
 	}
 	for _, browser := range browsers {
@@ -230,52 +242,8 @@ func safeOutput(root, output string, unsigned bool) error {
 }
 
 func publish(source, output string) (Artifact, error) {
-	if err := os.MkdirAll(filepath.Dir(output), 0755); err != nil {
-		return Artifact{}, err
-	}
-	in, err := os.Open(source)
+	digest, err := artifact.PublishPair(source, output)
 	if err != nil {
-		return Artifact{}, err
-	}
-	defer in.Close()
-	f, err := os.CreateTemp(filepath.Dir(output), ".pagevault-package-*.pkg")
-	if err != nil {
-		return Artifact{}, err
-	}
-	defer os.Remove(f.Name())
-	hash := sha256.New()
-	_, copyErr := io.Copy(io.MultiWriter(f, hash), in)
-	closeErr := f.Close()
-	if copyErr != nil {
-		return Artifact{}, copyErr
-	}
-	if closeErr != nil {
-		return Artifact{}, closeErr
-	}
-	if err := os.Chmod(f.Name(), 0644); err != nil {
-		return Artifact{}, err
-	}
-	digest := hex.EncodeToString(hash.Sum(nil))
-	checksum, err := os.CreateTemp(filepath.Dir(output), ".pagevault-package-checksum-*")
-	if err != nil {
-		return Artifact{}, err
-	}
-	defer os.Remove(checksum.Name())
-	_, writeErr := fmt.Fprintf(checksum, "%s  %s\n", digest, filepath.Base(output))
-	closeErr = checksum.Close()
-	if writeErr != nil {
-		return Artifact{}, writeErr
-	}
-	if closeErr != nil {
-		return Artifact{}, closeErr
-	}
-	if err := os.Chmod(checksum.Name(), 0644); err != nil {
-		return Artifact{}, err
-	}
-	if err := os.Rename(f.Name(), output); err != nil {
-		return Artifact{}, err
-	}
-	if err := os.Rename(checksum.Name(), output+".sha256"); err != nil {
 		return Artifact{}, err
 	}
 	return Artifact{Path: output, SHA256: digest}, nil
