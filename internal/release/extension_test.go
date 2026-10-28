@@ -20,7 +20,7 @@ func extensionProject(t *testing.T) string {
 
 func TestExtensionOnlyZIPHasStoreRootAndLicense(t *testing.T) {
 	root := extensionProject(t)
-	for _, name := range []string{"extension/private.sqlite3", "extension/key.pem", "extension/node_modules/secret.js"} {
+	for _, name := range []string{"extension/private.sqlite3", "extension/key.pem", "extension/node_modules/secret.js", "extension/ui/unintended.pkg", "extension/unintended.PKG", "extension/ui/unintended.pkg.sha256"} {
 		put(t, root, name, "PRIVATE")
 	}
 	output := filepath.Join(root, "dist", "extension.zip")

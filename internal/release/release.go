@@ -373,7 +373,7 @@ func excluded(name string, dir bool) bool {
 			return true
 		}
 	}
-	for _, suffix := range []string{".py", ".pyc", ".pem", ".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"} {
+	for _, suffix := range []string{".py", ".pyc", ".pem", ".zip", ".tar", ".gz", ".tgz", ".7z", ".rar", ".pkg", ".pkg.sha256"} {
 		if strings.HasSuffix(lower, suffix) {
 			return true
 		}

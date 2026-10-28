@@ -39,7 +39,8 @@ func distributionXML() []byte {
 	}
 	fmt.Fprintf(&b, "  <pkg-ref id=\"com.pagevault.host.core\" version=\"%s\">core.pkg</pkg-ref>\n", buildinfo.Version)
 	for _, v := range browsers {
-		fmt.Fprintf(&b, "  <pkg-ref id=\"com.pagevault.host.%s\" version=\"%s\">%s.pkg<must-close><app id=\"%s\"/></must-close></pkg-ref>\n", v.ID, buildinfo.Version, v.ID, v.BundleID)
+		fmt.Fprintf(&b, "  <pkg-ref id=\"com.pagevault.host.%s\" version=\"%s\">%s.pkg</pkg-ref>\n", v.ID, buildinfo.Version, v.ID)
+		fmt.Fprintf(&b, "  <pkg-ref id=\"com.pagevault.host.%s\"><must-close><app id=\"%s\"/></must-close></pkg-ref>\n", v.ID, v.BundleID)
 	}
 	b.WriteString("</installer-gui-script>\n")
 	return []byte(b.String())

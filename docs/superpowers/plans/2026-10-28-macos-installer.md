@@ -73,4 +73,4 @@
 - [x] Prepare privacy policy, listing/review instructions, signed/unsigned PKG usage, preserved DB behavior and downloads/publication prerequisites.
 - [x] Run Go race suite, vet/module verification, npm/browser/static checks, shell syntax, six-target build, full ZIP, extension ZIP, real unsigned PKG and SHA-256 checks. Record actual results and limits.
 - [x] Commit `feat: prepare store artifacts and installer documentation`.
-- [ ] Run one fresh whole-branch read-only review, address material findings with RED→GREEN regressions, then integrate under existing git/push authorization.
+- [x] Run one fresh whole-branch read-only review, address material findings with RED→GREEN regressions, then integrate under existing git/push authorization. Nested source alias, native-package exclusion and component URL regressions fixed; full suite green.

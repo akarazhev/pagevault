@@ -188,6 +188,23 @@ func safeOutput(root, output string, unsigned bool) error {
 	if unsigned && !strings.HasSuffix(output, "-unsigned.pkg") {
 		return errors.New("local test output must end in -unsigned.pkg")
 	}
+	parent := filepath.Dir(output)
+	for {
+		resolved, err := filepath.EvalSymlinks(parent)
+		if err == nil {
+			parent = resolved
+			break
+		}
+		if !os.IsNotExist(err) || filepath.Dir(parent) == parent {
+			return err
+		}
+		parent = filepath.Dir(parent)
+	}
+	if info, err := os.Stat(parent); err != nil {
+		return err
+	} else if !info.IsDir() {
+		return errors.New("package output parent is not a directory")
+	}
 	for _, source := range []string{"cmd", "internal", "extension", "docs", "scripts", "tests", ".git"} {
 		info, err := os.Stat(filepath.Join(root, source))
 		if os.IsNotExist(err) {
@@ -196,15 +213,15 @@ func safeOutput(root, output string, unsigned bool) error {
 		if err != nil {
 			return err
 		}
-		for parent := filepath.Dir(output); ; parent = filepath.Dir(parent) {
-			ancestor, err := os.Stat(parent)
+		for current := parent; ; current = filepath.Dir(current) {
+			ancestor, err := os.Stat(current)
 			if err == nil && os.SameFile(info, ancestor) {
 				return fmt.Errorf("package output cannot be inside source directory %s", source)
 			}
 			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
-			if filepath.Dir(parent) == parent {
+			if filepath.Dir(current) == current {
 				break
 			}
 		}

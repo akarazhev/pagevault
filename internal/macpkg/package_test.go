@@ -52,6 +52,26 @@ func TestBuildRejectsSourceAndAliasDestinations(t *testing.T) {
 	}
 }
 
+func TestPackageRejectsAliasesBelowProtectedDirectories(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, "extension", "ui")
+	if err := os.MkdirAll(inside, 0700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(t.TempDir(), "ui alias")
+	if err := os.Symlink(inside, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, output := range []string{filepath.Join(alias, "out-unsigned.pkg"), filepath.Join(alias, "not-created", "nested", "out-unsigned.pkg")} {
+		if err := safeOutput(root, output, true); err == nil {
+			t.Fatalf("accepted package output through nested source alias: %s", output)
+		}
+	}
+	if err := safeOutput(root, filepath.Join(t.TempDir(), "new", "out-unsigned.pkg"), true); err != nil {
+		t.Fatal("blocked ordinary output", err)
+	}
+}
+
 func TestBuildFailurePreservesPreviousArtifact(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("native Apple packaging tools")
@@ -124,6 +144,15 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 			ID       string `xml:"id,attr"`
 			Selected string `xml:"start_selected,attr"`
 		} `xml:"choice"`
+		References []struct {
+			ID        string `xml:"id,attr"`
+			URL       string `xml:",chardata"`
+			MustClose *struct {
+				Apps []struct {
+					ID string `xml:"id,attr"`
+				} `xml:"app"`
+			} `xml:"must-close"`
+		} `xml:"pkg-ref"`
 	}
 	if err := xml.Unmarshal(dist, &distribution); err != nil {
 		t.Fatal(err)
@@ -133,6 +162,26 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 	}
 	if !bytes.Contains(dist, []byte(`min="13.0"`)) {
 		t.Fatal("missing minimum macOS version")
+	}
+	urls := map[string]int{}
+	closures := map[string]string{}
+	for _, ref := range distribution.References {
+		if strings.TrimSpace(ref.URL) != "" {
+			urls[ref.ID]++
+		}
+		if ref.MustClose != nil && len(ref.MustClose.Apps) == 1 {
+			closures[ref.ID] = ref.MustClose.Apps[0].ID
+		}
+	}
+	for _, id := range []string{"core", "chrome", "chromium", "edge", "brave"} {
+		if urls["com.pagevault.host."+id] != 1 {
+			t.Fatalf("ambiguous package URL for %s: %d", id, urls["com.pagevault.host."+id])
+		}
+	}
+	for _, b := range browsers {
+		if closures["com.pagevault.host."+b.ID] != b.BundleID {
+			t.Fatal("missing browser close metadata", b.ID)
+		}
 	}
 	choices := map[string]string{}
 	for _, c := range distribution.Choices {
