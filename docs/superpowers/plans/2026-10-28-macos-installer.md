@@ -46,11 +46,11 @@
 
 **Interfaces:** macpkg.Build(context.Context,Options) (Artifact,error); Options has Root, Output, Go, Unsigned, ApplicationIdentity, InstallerIdentity. Artifact returns Path and SHA256. Package scripts consume Task 1's flag.
 
-- [ ] Write failing tests for explicit unsigned/signing modes, output safety, user-home domain, browser choices, minimum OS and script target resolution.
-- [ ] Implement source builds for both Darwin architectures, lipo, ad-hoc or Developer ID binary signing, native component/product packaging, atomic output/checksum and cleanup. Bump release identity to 1.3.0.
-- [ ] On macOS, test a real package: expand, inspect universal payload and Installer metadata, run postinstall in a temporary Unicode/space home, preserve a custom registered DB on upgrade, and query captured data through real installed native and SDK MCP processes.
-- [ ] Run `go test -race ./internal/macpkg ./internal/install ./cmd/pagevault`; expected PASS. Build a local unsigned PKG and inspect it with pkgutil/installer metadata commands.
-- [ ] Commit `feat: build per-user macOS installer packages`.
+- [x] Write failing tests for explicit unsigned/signing modes, output safety, user-home domain, browser choices, minimum OS and script target resolution.
+- [x] Implement source builds for both Darwin architectures, lipo, ad-hoc or Developer ID binary signing, native component/product packaging, atomic output/checksum and cleanup. Bump release identity to 1.3.0.
+- [x] On macOS, test a real package: expand, inspect universal payload and Installer metadata, run postinstall in a temporary Unicode/space home, preserve a custom registered DB on upgrade, and query captured data through real installed native and SDK MCP processes.
+- [x] Run `go test -race ./internal/macpkg ./internal/install ./cmd/pagevault`; expected PASS. Build a local unsigned PKG and inspect it with pkgutil/installer metadata commands.
+- [x] Commit `feat: build per-user macOS installer packages`.
 
 ### Task 3: Connection and download screen
 
