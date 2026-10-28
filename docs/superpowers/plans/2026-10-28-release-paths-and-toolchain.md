@@ -43,8 +43,8 @@
 
 **Interfaces:** Consume fixed release.Run; produce pinned tooling and a six-platform release ZIP.
 
-- [ ] Add a Node-version-pin ZIP-content regression. Expected: fail before updating the release whitelist.
-- [ ] Pin versions, regenerate lockfiles with package tools, ship .nvmrc, and update documentation/notices.
-- [ ] Run Go race tests, vet, module verification, npm test/check, and shell syntax checks with pinned tools. Expected: zero failures with explicit platform skips.
-- [ ] Build all six targets, verify ZIP/checksums, and smoke-test the macOS helper with isolated SQLite.
-- [ ] Record actual results and commit as chore: use current stable toolchains and dependencies.
+- [x] Add a Node-version-pin ZIP-content regression. Expected: fail before updating the release whitelist.
+- [x] Pin versions, regenerate lockfiles with package tools, ship .nvmrc, and update documentation/notices.
+- [x] Run Go race tests, vet, module verification, npm test/check, and shell syntax checks with pinned tools. Expected: zero failures with explicit platform skips.
+- [x] Build all six targets, verify ZIP/checksums, and smoke-test the macOS helper with isolated SQLite.
+- [x] Record actual results and commit as chore: use current stable toolchains and dependencies.

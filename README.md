@@ -30,7 +30,7 @@ PageVault сохраняет загруженное содержимое отк�
 
 Сквозная проверка выпуска выполняется на Linux/Chromium. Сборка и переносимые тесты Windows/macOS не заменяют реальный запуск на этих ОС. Точные результаты: [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
-Для изменения/сборки исходников нужен **Go 1.26+**; для браузерных тестов также Node.js 20+ и Playwright. Драйвер SQLite `modernc.org/sqlite` собирается без CGO. Версии зависимостей закреплены в `go.mod`/`go.sum`, лицензии включены в `THIRD_PARTY_NOTICES.md`.
+Для изменения/сборки исходников нужен **Go 1.27.3+**; для браузерных тестов также **Node.js 26.12.1+**, **npm 12.2.1+** и Playwright 1.64.1. Используем актуальные стабильные выпуски; Node.js — ветку Current. Версия Node.js закреплена в `.nvmrc`, npm — в `packageManager` файла `package.json`. Драйвер SQLite `modernc.org/sqlite` собирается без CGO. Версии зависимостей закреплены в `go.mod`/`go.sum` и `package-lock.json`, лицензии включены в `THIRD_PARTY_NOTICES.md`.
 
 ## Быстрая установка
 
@@ -184,6 +184,7 @@ go build -trimpath -buildvcs=false -o bin/pagevault-host ./cmd/pagevault
 Для браузерных тестов:
 
 ```bash
+npm install --global npm@12.2.1
 npm ci
 npx playwright install chromium
 npm test

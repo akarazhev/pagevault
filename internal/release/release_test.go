@@ -154,6 +154,22 @@ func TestRejectVersionMismatchAndRequiredSources(t *testing.T) {
 	}
 }
 
+func TestNodeVersionPinShipsWithRelease(t *testing.T) {
+	root := project(t)
+	put(t, root, ".nvmrc", "26.0.0\n")
+	out := filepath.Join(root, "dist", "release.zip")
+	if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	file := archive(t, out)["pagevault/.nvmrc"]
+	if file == nil {
+		t.Fatal("release is missing the Node.js version pin")
+	}
+	if content(t, file) != "26.0.0\n" {
+		t.Fatal("release changed the Node.js version pin")
+	}
+}
+
 func TestSkipBuildRequiresEveryTargetAndChecksums(t *testing.T) {
 	root := project(t)
 	out := filepath.Join(root, "dist/release.zip")

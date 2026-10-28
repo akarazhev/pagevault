@@ -49,7 +49,7 @@ var zipTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var rootFiles = []string{
 	"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum",
-	"package.json", "package-lock.json", ".gitignore", "install.sh",
+	"package.json", "package-lock.json", ".gitignore", ".nvmrc", "install.sh",
 	"install-windows.cmd", "install-windows.ps1",
 }
 

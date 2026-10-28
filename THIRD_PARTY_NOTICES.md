@@ -273,9 +273,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## modernc.org/libc v1.79.0
+## modernc.org/libc v1.79.1
 
-Source: https://pkg.go.dev/modernc.org/libc@v1.79.0
+Source: https://pkg.go.dev/modernc.org/libc@v1.79.1
 
 
 ### LICENSE
