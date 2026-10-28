@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"pagevault.local/pagevault/internal/buildinfo"
 )
 
 func TestDatabaseConfigPrecedence(t *testing.T) {
@@ -58,7 +60,7 @@ func TestVersionDoesNotOpenDatabase(t *testing.T) {
 	if code := run([]string{"version"}, strings.NewReader(""), &out, &errors, "unused"); code != 0 {
 		t.Fatalf("%d %s", code, errors.String())
 	}
-	if !strings.Contains(out.String(), "1.1.0") {
+	if !strings.Contains(out.String(), buildinfo.Version) {
 		t.Fatal(out.String())
 	}
 	if _, err := os.Stat(os.Getenv("PAGEVAULT_DB")); !os.IsNotExist(err) {

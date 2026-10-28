@@ -1,7 +1,8 @@
-// PageVault is both the browser's native host and its per-user installer.
+// PageVault is the browser's native host, local MCP server and per-user installer.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -14,6 +15,7 @@ import (
 
 	"pagevault.local/pagevault/internal/buildinfo"
 	"pagevault.local/pagevault/internal/install"
+	"pagevault.local/pagevault/internal/mcpserver"
 	"pagevault.local/pagevault/internal/native"
 )
 
@@ -30,7 +32,7 @@ func run(args []string, input io.Reader, output, errorOutput io.Writer, executab
 	command := "serve"
 	if len(args) > 0 {
 		switch args[0] {
-		case "serve", "install", "uninstall", "diagnose", "version":
+		case "serve", "mcp", "install", "uninstall", "diagnose", "version":
 			command, args = args[0], args[1:]
 		case "--version":
 			command, args = "version", args[1:]
@@ -41,6 +43,20 @@ func run(args []string, input io.Reader, output, errorOutput io.Writer, executab
 	}
 	var err error
 	switch command {
+	case "mcp":
+		flags := flag.NewFlagSet(command, flag.ContinueOnError)
+		flags.SetOutput(errorOutput)
+		path := flags.String("db", "", "Существующий файл SQLite (только чтение)")
+		err = flags.Parse(args)
+		if err == nil && flags.NArg() != 0 {
+			err = fmt.Errorf("неизвестные аргументы: %s", strings.Join(flags.Args(), " "))
+		}
+		if err == nil {
+			*path, err = databasePath(*path, executable)
+		}
+		if err == nil {
+			err = mcpserver.Serve(context.Background(), *path, input, output)
+		}
 	case "version":
 		fmt.Fprintf(output, "PageVault %s (%s, %s/%s)\n", buildinfo.Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		return 0
@@ -169,7 +185,9 @@ pagevault-host uninstall --browser chrome
 pagevault-host diagnose [--db PATH]
 pagevault-host version
 pagevault-host serve [--db PATH]
+pagevault-host mcp [--db PATH]
 
 Без команды работает Native Messaging: только двоичные кадры JSON в stdin/stdout.
+Команда mcp: локальный MCP через stdio, существующий архив только для чтения.
 Браузеры: chrome, chromium, edge, brave. Подробности: README.md.
 `

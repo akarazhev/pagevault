@@ -3,7 +3,7 @@
   "name": "PageVault — локальный архив",
   "short_name": "PageVault",
   "description": "Сохраняйте просматриваемые страницы в структурированном JSON в локальную SQLite.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minimum_chrome_version": "116",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvaLVvF8evFL4J9+0LkWheM3QPl8KeNJoXxJYM4+Pdgl0U0PPu4X/9U8wE70UjudlQ6xoaUrRK4UBPWvgOskg7UAxx+0Lsy3yoSNPx1jhhYIJTUZgVU08l1pwvg2l0U0CJo1XyahXMarar+oSxZU2h/Y7f11XtOn6ozJtQZG0LEUz0yTTltnLqOqQTf/MJGz52LPKzAZK+8n75zTmzAQxTUaw0LIIZpn3PKnNRt56xkxLIijyRhE2SCZ4OJDsQbMrjhWpbtTX365Ba3D+NEp9ECXbsefcXvEYLU2FD/fVtuaL07EdnCbVLgh9TYutp7ay9Vu0VRXF6PGNaL8azH4qowIDAQAB",
   "permissions": [

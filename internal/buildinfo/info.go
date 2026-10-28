@@ -2,7 +2,7 @@
 package buildinfo
 
 const (
-	Version     = "1.1.0"
+	Version     = "1.2.0"
 	HostName    = "com.pagevault.host"
 	ExtensionID = "ijkioljfdaaplhaldbdpabckkfcieiee"
 )
