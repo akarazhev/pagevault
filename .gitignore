@@ -1,0 +1,14 @@
+node_modules/
+.test-artifacts/
+__pycache__/
+*.py[cod]
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+*.pem
+dist/
+bin/
+docs/tasks/*.diff
+docs/tasks/*-before-fix.txt
+.DS_Store

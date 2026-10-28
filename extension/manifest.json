@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "PageVault — локальный архив",
+  "short_name": "PageVault",
+  "description": "Сохраняйте просматриваемые страницы в структурированном JSON в локальную SQLite.",
+  "version": "1.1.0",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvaLVvF8evFL4J9+0LkWheM3QPl8KeNJoXxJYM4+Pdgl0U0PPu4X/9U8wE70UjudlQ6xoaUrRK4UBPWvgOskg7UAxx+0Lsy3yoSNPx1jhhYIJTUZgVU08l1pwvg2l0U0CJo1XyahXMarar+oSxZU2h/Y7f11XtOn6ozJtQZG0LEUz0yTTltnLqOqQTf/MJGz52LPKzAZK+8n75zTmzAQxTUaw0LIIZpn3PKnNRt56xkxLIijyRhE2SCZ4OJDsQbMrjhWpbtTX365Ba3D+NEp9ECXbsefcXvEYLU2FD/fVtuaL07EdnCbVLgh9TYutp7ay9Vu0VRXF6PGNaL8azH4qowIDAQAB",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "alarms",
+    "nativeMessaging",
+    "unlimitedStorage"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "ui/popup.html",
+    "default_title": "PageVault — сохранить страницу",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "ui/options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "incognito": "not_allowed"
+}

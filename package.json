@@ -1,0 +1,22 @@
+{
+  "name": "pagevault-local-archive",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser extension and persistent Go SQLite archive.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 tests/*.test.cjs",
+    "test:core": "node --test tests/core.test.cjs",
+    "test:host": "go test ./...",
+    "test:browser": "node --test --test-concurrency=1 tests/extractor.test.cjs tests/integration.test.cjs",
+    "check": "node scripts/check.mjs",
+    "package": "go run ./cmd/release",
+    "build": "go build -trimpath -buildvcs=false -o bin/pagevault-host ./cmd/pagevault"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

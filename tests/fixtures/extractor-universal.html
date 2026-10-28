@@ -1,0 +1,17 @@
+<!doctype html><html lang="ru"><head><title>Проверка 📚</title><meta name="description" content="Описание"><link rel="canonical" href="/canonical?state=1"></head><body>
+<header><h1>Заголовок</h1></header>
+<div>Первый <span>общий</span> текст <a href="/docs?q=2#part">Документы</a><div>Вложенный текст</div>Конец</div>
+<p>До <strong>кода</strong></p><pre><code class="language-python">def f():
+    print("Привет 🌍")
+	return 2
+</code></pre>
+<ul><li>Первый пункт</li><li>Второй <a href="/two">пункт</a><ol><li>Вложенный</li></ol></li></ul>
+<table><thead><tr><th>Имя</th><th>Значение</th></tr></thead><tbody><tr><td>A</td><td>42</td></tr></tbody></table>
+<p>Перед картинкой <img src="/photo.png" alt="Фото"> после картинки</p>
+<video src="/movie.mp4" poster="/poster.png"></video><a href="/last">Последняя ссылка</a>
+<div id="shadow"></div><iframe src="/frame"></iframe><iframe src="http://127.0.0.1:1/inaccessible"></iframe>
+<script>document.querySelector('#shadow').attachShadow({mode:'open'}).innerHTML='<p>Текст тени <slot></slot></p>'; window.pageAttack = false;</script>
+<form><label>Имя <input value="SECRET_INPUT"></label><textarea>SECRET_TEXTAREA</textarea><select><option value="SECRET_OPTION">SECRET_OPTION</option></select></form>
+<p onclick="window.pageAttack=true"><a href="javascript:alert(1)">Небезопасная ссылка</a><img src="javascript:alert(1)" onerror="window.pageAttack=true"></p>
+<script type="application/json">{"secret":"EXECUTABLE_SECRET"}</script><style>.unused {color:red}</style>
+</body></html>
