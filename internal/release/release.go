@@ -84,7 +84,10 @@ func Run(ctx context.Context, opts Options) error {
 	if !filepath.IsAbs(opts.Output) {
 		opts.Output = filepath.Join(root, opts.Output)
 	}
-	opts.Output = filepath.Clean(opts.Output)
+	opts.Output, err = resolveOutputPath(filepath.Clean(opts.Output))
+	if err != nil {
+		return fmt.Errorf("resolve output directory: %w", err)
+	}
 	if opts.Go == "" {
 		opts.Go = "go"
 	}
@@ -142,6 +145,31 @@ func Run(ctx context.Context, opts Options) error {
 	entries = filtered
 	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
 	return writeZIP(opts.Output, entries)
+}
+
+// Resolve directory aliases, including existing ancestors of a new directory.
+// Keep the final filename literal: publishing replaces file symlinks themselves.
+func resolveOutputPath(path string) (string, error) {
+	directory := filepath.Dir(path)
+	var missing []string
+	for {
+		resolved, err := filepath.EvalSymlinks(directory)
+		if err == nil {
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return filepath.Join(resolved, filepath.Base(path)), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return "", err
+		}
+		missing = append(missing, filepath.Base(directory))
+		directory = parent
+	}
 }
 
 func validate(root string) error {

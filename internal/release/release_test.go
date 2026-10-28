@@ -232,6 +232,81 @@ func TestOutputInsideSourceDirectoryDoesNotPackageOwnChecksum(t *testing.T) {
 	}
 }
 
+func TestOutputThroughDirectoryAliasExcludesOwnChecksum(t *testing.T) {
+	for _, name := range []string{"extension/release.zip", "extension/new/nested/release.zip"} {
+		t.Run(name, func(t *testing.T) {
+			root := project(t)
+			alias := filepath.Join(t.TempDir(), "Проект с пробелами")
+			if err := os.Symlink(root, alias); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(alias, filepath.FromSlash(name))
+			for i := 0; i < 2; i++ {
+				if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+					t.Fatal(err)
+				}
+				files := archive(t, out)
+				if files["pagevault/"+name+".sha256"] != nil {
+					t.Fatal("included output checksum through directory alias")
+				}
+				if content(t, files["pagevault/README.md"]) != "release" {
+					t.Fatal("release source changed")
+				}
+			}
+		})
+	}
+}
+
+func TestOutputAliasCannotOverwriteReleaseSource(t *testing.T) {
+	root := project(t)
+	alias := filepath.Join(t.TempDir(), "project alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	err := Run(context.Background(), Options{Root: root, Output: filepath.Join(alias, "README.md"), SourceOnly: true})
+	if err == nil {
+		t.Error("accepted a release source as output through a directory alias")
+	}
+	got, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "release" {
+		t.Fatal("overwrote release source through directory alias")
+	}
+}
+
+func TestArchiveReplacesSymlinkWithoutChangingTarget(t *testing.T) {
+	root := project(t)
+	out := filepath.Join(root, "dist", "release.zip")
+	if err := os.MkdirAll(filepath.Dir(out), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "README.md"), out); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(context.Background(), Options{Root: root, Output: out, SourceOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "release" {
+		t.Fatal("archive overwrote symlink target")
+	}
+	info, err := os.Lstat(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatal("archive did not replace the symlink with a regular file")
+	}
+	if content(t, archive(t, out)["pagevault/README.md"]) != "release" {
+		t.Fatal("archive content changed")
+	}
+}
+
 func TestChecksumDoesNotFollowExistingSymlink(t *testing.T) {
 	root := project(t)
 	out := filepath.Join(root, "dist/release.zip")
