@@ -23,6 +23,7 @@ type Options struct {
 	Browser, ExtensionID, ExtensionManifest, DBPath, RuntimeDir, ManifestDir string
 	Home, Platform, ExecutablePath                                           string
 	Uninstall, DryRun                                                        bool
+	PreserveRegisteredDB                                                     bool
 }
 
 func currentPlatform() string {
@@ -160,7 +161,18 @@ func Run(o Options) (map[string]any, error) {
 	executable := filepath.Join(runtimeDir, o.Browser, name)
 	config := filepath.Join(runtimeDir, o.Browser, "pagevault.json")
 	manifestPath := filepath.Join(native, buildinfo.HostName+".json")
-	if o.DBPath == "" {
+	adopted := false
+	if o.DBPath == "" && o.PreserveRegisteredDB && !o.Uninstall {
+		var previousDB string
+		previousDB, adopted, err = registeredDatabase(manifestPath)
+		if err != nil {
+			return nil, err
+		}
+		if adopted {
+			db = previousDB
+		}
+	}
+	if o.DBPath == "" && !adopted {
 		if data, readErr := os.ReadFile(config); readErr == nil {
 			var previous struct {
 				SchemaVersion int    `json:"schema_version"`

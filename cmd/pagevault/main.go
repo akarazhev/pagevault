@@ -73,6 +73,7 @@ func run(args []string, input io.Reader, output, errorOutput io.Writer, executab
 		flags.StringVar(&options.Home, "home", "", "Домашний каталог для теста/предпросмотра")
 		flags.StringVar(&options.Platform, "platform", "", "Linux, Darwin или Windows; другая ОС только с --dry-run")
 		flags.BoolVar(&options.DryRun, "dry-run", false, "Показать план без изменения файлов")
+		flags.BoolVar(&options.PreserveRegisteredDB, "preserve-registered-db", false, "Сохранить путь базы действующего native-host, включая нестандартную папку программы")
 		flags.BoolVar(&options.Uninstall, "uninstall", command == "uninstall", "Снять регистрацию, сохранив базу")
 		err = flags.Parse(args)
 		if err == nil && flags.NArg() != 0 {
