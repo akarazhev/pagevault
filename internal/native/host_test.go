@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"pagevault.local/pagevault/internal/archive"
 	"path/filepath"
@@ -269,5 +270,107 @@ func TestRetainedPhysicalConnectionAcrossMixedRequests(t *testing.T) {
 	}
 	if s.DB.Stats().OpenConnections != 1 {
 		t.Fatal(s.DB.Stats())
+	}
+}
+
+func TestDomainsPaginationAndExactHostnames(t *testing.T) {
+	s, err := archive.Open(filepath.Join(t.TempDir(), "archive.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	tx, err := s.DB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 4800; i++ {
+		host := fmt.Sprintf("site-%04d.%s.%s.%s.example", i, strings.Repeat("a", 60), strings.Repeat("b", 60), strings.Repeat("c", 60))
+		_, err = tx.Exec("INSERT INTO pages(url,title,hostname,first_seen,last_seen) VALUES(?,?,?,?,?)", "https://"+host+"/", "test", host, "now", "now")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	h := newHost(s)
+	offset := int64(0)
+	count := 0
+	for {
+		r := h.handle(map[string]any{"id": "test", "type": "pages.domains", "offset": offset})
+		if r["ok"] != true {
+			t.Fatalf("response: %v", r)
+		}
+		raw, _ := json.Marshal(r)
+		if len(raw) >= 768*1024 {
+			t.Fatal("response exceeds budget", len(raw))
+		}
+		data := r["data"].(map[string]any)
+		items := data["items"].([]map[string]any)
+		for _, item := range items {
+			expected := fmt.Sprintf("site-%04d.%s.%s.%s.example", count, strings.Repeat("a", 60), strings.Repeat("b", 60), strings.Repeat("c", 60))
+			if item["hostname"] != expected {
+				t.Fatalf("host mismatch: %v", item)
+			}
+			count++
+		}
+		if data["next_offset"] == nil {
+			break
+		}
+		next := data["next_offset"].(int64)
+		if next != offset+int64(len(items)) || next <= offset {
+			t.Fatalf("bad continuation %d", next)
+		}
+		offset = next
+	}
+	if count != 4800 {
+		t.Fatal("lost hosts", count)
+	}
+	host := fmt.Sprintf("site-%04d.%s.%s.%s.example", 42, strings.Repeat("a", 60), strings.Repeat("b", 60), strings.Repeat("c", 60))
+	filtered := h.handle(map[string]any{"id": "test", "type": "pages.list", "domain": host})
+	if filtered["ok"] != true {
+		t.Fatal(filtered)
+	}
+	pages := filtered["data"].(map[string]any)["items"].([]map[string]any)
+	if len(pages) != 1 || pages[0]["hostname"] != host {
+		t.Fatalf("exact filter: %v", pages)
+	}
+
+	for _, request := range []map[string]any{{"limit": 0}, {"limit": 201}, {"offset": -1}} {
+		request["id"] = "test"
+		request["type"] = "pages.domains"
+		if h.handle(request)["ok"] != false {
+			t.Fatal("accepted invalid pagination", request)
+		}
+	}
+}
+
+func TestDomainsPageEndsAtByteBudget(t *testing.T) {
+	s, err := archive.Open(filepath.Join(t.TempDir(), "archive.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	for i := 0; i < 200; i++ {
+		host := fmt.Sprintf("%04d.%s", i, strings.Repeat("x", 5000))
+		if _, err = s.DB.Exec("INSERT INTO pages(url,title,hostname,first_seen,last_seen) VALUES(?,?,?,?,?)", host, "", host, "", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := newHost(s)
+	first := h.handle(map[string]any{"id": "test", "type": "pages.domains"})
+	raw, _ := json.Marshal(first)
+	if first["ok"] != true || len(raw) >= 768*1024 {
+		t.Fatalf("first page %d %v", len(raw), first["ok"])
+	}
+	data := first["data"].(map[string]any)
+	items := data["items"].([]map[string]any)
+	next, ok := data["next_offset"].(int64)
+	if !ok || next != int64(len(items)) || next >= 200 {
+		t.Fatalf("continuation %v, items %d", data["next_offset"], len(items))
+	}
+	second := h.handle(map[string]any{"id": "test", "type": "pages.domains", "offset": next})
+	if second["ok"] != true || len(second["data"].(map[string]any)["items"].([]map[string]any))+len(items) != 200 {
+		t.Fatal("lost domains")
 	}
 }

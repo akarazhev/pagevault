@@ -178,7 +178,11 @@ func TestTwoConnectionsAndParallelOpenCommitAllBlocks(t *testing.T) {
 }
 
 func TestLiteralDatabasePathWithURICharacters(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "архив ?#%.sqlite3")
+	name := "архив #%.sqlite3"
+	if runtime.GOOS != "windows" {
+		name = "архив ?#%.sqlite3"
+	}
+	path := filepath.Join(t.TempDir(), name)
 	s, e := Open(path)
 	if e != nil {
 		t.Fatal(e)

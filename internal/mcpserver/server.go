@@ -3,7 +3,11 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/google/jsonschema-go/jsonschema"
 	"io"
+	"reflect"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"pagevault.local/pagevault/internal/archive"
@@ -26,7 +30,7 @@ func Serve(ctx context.Context, path string, input io.Reader, output io.Writer) 
 	if !ok {
 		writer = nopWriteCloser{output}
 	}
-	return newServer(store).Run(ctx, &mcp.IOTransport{Reader: reader, Writer: writer, MaxLineLength: 64 * 1024})
+	return newServer(store).Run(ctx, &mcp.IOTransport{Reader: newLineReader(reader), Writer: writer, MaxLineLength: 64 * 1024})
 }
 
 type nopWriteCloser struct{ io.Writer }
@@ -56,10 +60,50 @@ func newServer(store *archive.Store) *mcp.Server {
 
 func register[In, Out any](s *mcp.Server, name, description string, fn func(context.Context, In) (Out, error)) {
 	no := false
-	mcp.AddTool(s, &mcp.Tool{Name: name, Description: description, Annotations: &mcp.ToolAnnotations{
-		ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: &no, OpenWorldHint: &no,
-	}}, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+	inputSchema, err := jsonschema.ForType(reflect.TypeFor[In](), &jsonschema.ForOptions{})
+	if err != nil {
+		panic(err)
+	}
+	outputSchema, err := jsonschema.ForType(reflect.TypeFor[Out](), &jsonschema.ForOptions{})
+	if err != nil {
+		panic(err)
+	}
+	resolved, err := inputSchema.Resolve(nil)
+	if err != nil {
+		panic(err)
+	}
+	s.AddTool(&mcp.Tool{Name: name, Description: description, InputSchema: inputSchema, OutputSchema: outputSchema, Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: &no, OpenWorldHint: &no}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		raw := req.Params.Arguments
+		if len(raw) == 0 {
+			raw = []byte("{}")
+		}
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			var result mcp.CallToolResult
+			result.SetError(err)
+			return &result, nil
+		}
+		if err := resolved.Validate(value); err != nil {
+			var result mcp.CallToolResult
+			result.SetError(fmt.Errorf("validating arguments: %w", err))
+			return &result, nil
+		}
+		var in In
+		if err := json.Unmarshal(raw, &in); err != nil {
+			var result mcp.CallToolResult
+			result.SetError(err)
+			return &result, nil
+		}
 		out, err := fn(ctx, in)
-		return nil, out, err
+		if err != nil {
+			var result mcp.CallToolResult
+			result.SetError(err)
+			return &result, nil
+		}
+		encoded, err := json.Marshal(out)
+		if err != nil {
+			return nil, err
+		}
+		return &mcp.CallToolResult{StructuredContent: json.RawMessage(encoded), Content: []mcp.Content{&mcp.TextContent{Text: string(encoded)}}}, nil
 	})
 }

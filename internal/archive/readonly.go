@@ -37,11 +37,7 @@ func OpenReadOnly(path string) (*Store, error) {
 	if version != 1 {
 		return fail(fmt.Errorf("unsupported archive schema version %d (supported: 1); capture a page with PageVault first", version))
 	}
-	for _, query := range []string{
-		"SELECT id,url,title,hostname,first_seen,last_seen,latest_capture_id FROM pages LIMIT 0",
-		"SELECT id,page_id,captured_at,content_hash,block_count,reason,payload_json FROM captures LIMIT 0",
-		"SELECT id,page_id,block_hash,payload_json,search_text FROM blocks LIMIT 0",
-	} {
+	for _, query := range schemaChecks {
 		rows, err := db.Query(query)
 		if err != nil {
 			return fail(err)

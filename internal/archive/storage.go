@@ -125,12 +125,8 @@ func Open(path string) (*Store, error) {
 			return fail(e)
 		}
 	}
-	var version int
-	if e = db.QueryRow("PRAGMA user_version").Scan(&version); e != nil {
+	if e = prepareSchema(db); e != nil {
 		return fail(e)
-	}
-	if version != 0 && version != 1 {
-		return fail(fmt.Errorf("unsupported archive schema version %d (supported: 1)", version))
 	}
 	deadline := time.Now().Add(30 * time.Second)
 	for {
@@ -144,14 +140,7 @@ func Open(path string) (*Store, error) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if _, e = db.Exec(`PRAGMA synchronous=FULL;
- CREATE TABLE IF NOT EXISTS pages(id INTEGER PRIMARY KEY,url TEXT NOT NULL UNIQUE,title TEXT NOT NULL,hostname TEXT NOT NULL,first_seen TEXT NOT NULL,last_seen TEXT NOT NULL,latest_capture_id INTEGER);
- CREATE TABLE IF NOT EXISTS captures(id INTEGER PRIMARY KEY,page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,captured_at TEXT NOT NULL,content_hash TEXT NOT NULL,block_count INTEGER NOT NULL,reason TEXT NOT NULL,payload_json TEXT NOT NULL,UNIQUE(page_id,content_hash));
- CREATE TABLE IF NOT EXISTS blocks(id INTEGER PRIMARY KEY,page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,block_hash TEXT NOT NULL,payload_json TEXT NOT NULL,search_text TEXT NOT NULL,UNIQUE(page_id,block_hash));
- CREATE INDEX IF NOT EXISTS captures_page ON captures(page_id,id DESC);
- CREATE INDEX IF NOT EXISTS blocks_page ON blocks(page_id,id);
- CREATE INDEX IF NOT EXISTS pages_hostname ON pages(hostname);
- PRAGMA user_version=1;`); e != nil {
+	if _, e = db.Exec("PRAGMA synchronous=FULL"); e != nil {
 		return fail(e)
 	}
 	return s, nil
@@ -575,13 +564,54 @@ func (s *Store) ExportContext(ctx context.Context, id int64) (map[string]any, er
 	}
 	return map[string]any{"schema_version": 1, "archive_kind": "observed_blocks", "page": page, "blocks": blocks}, nil
 }
-func (s *Store) Domains() (map[string]any, error) {
-	rows, e := s.DB.Query("SELECT hostname,count(*) AS page_count FROM pages GROUP BY hostname ORDER BY hostname")
-	if e != nil {
-		return nil, e
+func (s *Store) Domains() (map[string]any, error) { return s.DomainsPage(200, 0) }
+
+func (s *Store) DomainsPage(limit, offset int64) (map[string]any, error) {
+	if _, err := Integer(limit, "limit", 1, 200); err != nil {
+		return nil, err
 	}
-	items, e := readRows(rows)
-	return map[string]any{"items": items}, e
+	if _, err := Integer(offset, "offset", 0, -1); err != nil {
+		return nil, err
+	}
+	var total int64
+	if err := s.DB.QueryRow("SELECT count(DISTINCT hostname) FROM pages").Scan(&total); err != nil {
+		return nil, err
+	}
+	rows, err := s.DB.Query("SELECT hostname,count(*) FROM pages GROUP BY hostname ORDER BY hostname LIMIT ? OFFSET ?", limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]map[string]any, 0)
+	size := 0
+	for rows.Next() {
+		var hostname string
+		var count int64
+		if err = rows.Scan(&hostname, &count); err != nil {
+			return nil, err
+		}
+		item := map[string]any{"hostname": hostname, "page_count": count}
+		raw, err := Canonical(item)
+		if err != nil {
+			return nil, err
+		}
+		if size+len(raw)+1 > 760*1024 {
+			if len(items) == 0 {
+				return nil, fmt.Errorf("hostname exceeds response budget")
+			}
+			break
+		}
+		size += len(raw) + 1
+		items = append(items, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	var next any
+	if offset+int64(len(items)) < total && len(items) > 0 {
+		next = offset + int64(len(items))
+	}
+	return map[string]any{"items": items, "total": total, "limit": limit, "offset": offset, "next_offset": next}, nil
 }
 func (s *Store) Stats() (map[string]any, error) {
 	m := map[string]any{"db_path": s.Path}

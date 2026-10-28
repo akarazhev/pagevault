@@ -139,7 +139,14 @@ func (h *host) handle(value any) map[string]any {
 			}
 		}
 	case "pages.domains":
-		data, e = h.store.Domains()
+		var limit, offset int64
+		limit, e = integer("limit", 200, 1, 200)
+		if e == nil {
+			offset, e = integer("offset", 0, 0, -1)
+		}
+		if e == nil {
+			data, e = h.store.DomainsPage(limit, offset)
+		}
 	case "stats":
 		data, e = h.store.Stats()
 	case "pages.delete":

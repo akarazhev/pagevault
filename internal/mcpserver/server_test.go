@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -404,5 +405,63 @@ func TestServeBoundsInboundFramesAndSupportsCancellation(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		input.Close()
 		t.Fatal("server did not stop after cancellation")
+	}
+}
+
+func TestWirePreservesLargeIDsAndBoundsAfterInitialize(t *testing.T) {
+	w, _, _ := fixture(t)
+	page, capid := save(t, w, capture("synthetic"))
+	const high int64 = 9007199254740993
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{"PRAGMA foreign_keys=OFF", nil},
+		{"UPDATE pages SET id=? WHERE id=?", []any{high, page}},
+		{"UPDATE captures SET page_id=?,id=? WHERE id=?", []any{high, high, capid}},
+		{"UPDATE blocks SET page_id=?", []any{high}},
+		{"PRAGMA foreign_keys=ON", nil},
+	} {
+		if _, err := w.DB.Exec(q.sql, q.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	input, writer := io.Pipe()
+	output, reader := io.Pipe()
+	defer input.Close()
+	defer reader.Close()
+	done := make(chan error, 1)
+	go func() { done <- Serve(context.Background(), w.Path, input, reader) }()
+	scan := bufio.NewScanner(output)
+	scan.Buffer(make([]byte, 4096), 1024*1024)
+	request := func(s string) string {
+		t.Helper()
+		if _, err := io.WriteString(writer, s+"\n"); err != nil {
+			t.Fatal(err)
+		}
+		if !scan.Scan() {
+			t.Fatal("missing reply", scan.Err())
+		}
+		return scan.Text()
+	}
+	request(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"audit","version":"1"},"capabilities":{}}}`)
+	for i, call := range []string{`{"name":"search_pages","arguments":{}}`, `{"name":"list_versions","arguments":{"page_id":9007199254740993}}`, `{"name":"get_page","arguments":{"page_id":9007199254740993}}`, `{"name":"get_version","arguments":{"capture_id":9007199254740993}}`} {
+		reply := request(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":%s}`, i+2, call))
+		if strings.Count(reply, "9007199254740993") < 2 || strings.Contains(reply, "9007199254740992") || strings.Contains(reply, `"isError":true`) {
+			t.Fatalf("lost ID: %s", reply)
+		}
+	}
+	writer.Close()
+	<-done
+}
+
+func TestWireRejectsOversizedFrameAfterShortFrame(t *testing.T) {
+	w, _, _ := fixture(t)
+	init := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"audit","version":"1"},"capabilities":{}}}` + "\n"
+	oversized := fmt.Sprintf(`{"jsonrpc":"2.0","id":2,"method":"ping","params":{"_meta":{"padding":%q}}}`+"\n", strings.Repeat("x", 65500))
+	var out bytes.Buffer
+	err := Serve(context.Background(), w.Path, strings.NewReader(init+oversized), &out)
+	if err == nil {
+		t.Fatal("accepted oversized second frame")
 	}
 }

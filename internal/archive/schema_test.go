@@ -1,8 +1,10 @@
 package archive
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -43,5 +45,46 @@ func TestFreshSchemaIsInitializedAsVersionOne(t *testing.T) {
 	var version int
 	if e := s.DB.QueryRow("PRAGMA user_version").Scan(&version); e != nil || version != 1 {
 		t.Fatal(version, e)
+	}
+}
+
+func TestRejectForeignAndIncompleteWithoutMutation(t *testing.T) {
+	for _, version := range []int{0, 1} {
+		t.Run(fmt.Sprint(version), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "foreign.sqlite")
+			db, err := sql.Open("sqlite", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = db.Exec(fmt.Sprintf("CREATE TABLE untouched(value TEXT); INSERT INTO untouched VALUES('preserved'); PRAGMA user_version=%d", version)); err != nil {
+				t.Fatal(err)
+			}
+			db.Close()
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s, err := Open(path)
+			if err == nil {
+				s.Close()
+				t.Fatal("accepted foreign or incomplete archive")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Fatal("archive bytes changed")
+			}
+			db, err = sql.Open("sqlite", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			var mode string
+			if err = db.QueryRow("PRAGMA journal_mode").Scan(&mode); err != nil || mode != "delete" {
+				t.Fatalf("journal changed: %s %v", mode, err)
+			}
+		})
 	}
 }

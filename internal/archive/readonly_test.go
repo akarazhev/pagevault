@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -108,7 +109,11 @@ func TestReadOnlyArchiveNeverCreatesOrInitializes(t *testing.T) {
 }
 
 func TestReadOnlyArchiveTreatsURIPunctuationAsFilename(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "архив ?mode=rw&_pragma=query_only(0)#%.sqlite3")
+	name := "архив #%.sqlite3"
+	if runtime.GOOS != "windows" {
+		name = "архив ?mode=rw&_pragma=query_only(0)#%.sqlite3"
+	}
+	path := filepath.Join(t.TempDir(), name)
 	w, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
