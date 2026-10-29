@@ -10,6 +10,7 @@ Get the files and matching `.sha256` checksums from [GitHub Releases](https://gi
 | --- | --- |
 | `PageVault-1.5.0.zip` | Chromium and Firefox extension folders, installers, source and binaries for macOS, Linux and Windows on amd64 and arm64 |
 | `PageVault-Extension-1.5.0.zip` | Chromium extension and license |
+| `PageVault-Firefox-1.5.0.xpi` | Mozilla-signed Firefox extension for permanent installation |
 | `PageVault-Firefox-1.5.0.zip` | Unsigned Firefox extension and license; build locally if not yet published |
 | `PageVault-1.5.0-macOS-unsigned.pkg` | macOS helper for Intel and Apple Silicon; requires macOS 13 or later |
 
@@ -47,9 +48,11 @@ Check the helper connection and database path in PageVault settings. The extensi
 
 ### Firefox
 
+For permanent installation, download `PageVault-Firefox-1.5.0.xpi`. Open `about:addons`, choose the gear menu, select **Install Add-on From File**, and select the XPI. Install the helper for `firefox` separately, then check the connection and database path in PageVault settings. The full bundle's `extension-firefox` folder is an unsigned development copy; the signed XPI is a separate download.
+
 Use the bundle's `extension-firefox` folder or build a Firefox ZIP with `npm run package:firefox`. For development, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `extension-firefox/manifest.json` or `PageVault-Firefox-1.5.0.zip`. Temporary add-ons are removed when Firefox closes; drain the queue before removing or changing installations.
 
-Permanent installation in Firefox release/beta requires a Mozilla-signed XPI. The generated ZIP is unsigned and cannot be installed permanently by renaming it to `.xpi`. Obtain a signature through AMO (public listing or unlisted self-distribution); see [Mozilla's signing guide](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/). The build does not submit or sign an add-on.
+Permanent installation in Firefox release/beta requires a Mozilla-signed XPI. The generated ZIP is unsigned and cannot be installed permanently by renaming it to `.xpi`. Maintainers obtain a signature through AMO (public listing or unlisted self-distribution); see [Mozilla's signing guide](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/). The build does not submit or sign an add-on. Self-distributed updates are installed manually; this package does not configure an automatic update feed.
 
 The Firefox add-on ID is `pagevault@pagevault.local`. Firefox may show a browsing-activity and website-content disclosure because selected pages are sent to the **local** Native Messaging helper. There is no remote collection service. Install the helper for `firefox`, then check the connection and archive path in settings.
 

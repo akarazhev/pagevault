@@ -16,6 +16,8 @@ The full ZIP includes six host binaries, `extension/` (Chromium), generated `ext
 
 The Firefox ZIP is unsigned. Mozilla signing through AMO is required for permanent release/beta installation, including self-distribution. Keep `pagevault@pagevault.local` fixed across updates and helper registrations. Use an AMO account to submit the generated ZIP as a listed or unlisted add-on. Do not publish the unsigned ZIP as a permanently installable XPI. See [Mozilla signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
+After AMO signs a version, preserve the downloaded XPI bytes and publish it separately as `PageVault-Firefox-<version>.xpi` with a SHA-256 file. Compare the application assets and parsed manifest with the submitted ZIP; signing may change JSON formatting and adds `META-INF` signature files. Verify permanent installation with signature checks enabled in an isolated Firefox profile, including persistence after browser restart. Do not unpack and repack the signed file.
+
 On macOS, build the universal installer with:
 
 ```sh
