@@ -19,7 +19,7 @@ func CheckPackagePayload(home string) error {
 	app := filepath.Join(home, "Library", "Application Support", "PageVault")
 	base := filepath.Join(app, "Installer")
 	targets := []string{filepath.Join(base, "pagevault-host"), filepath.Join(base, "LICENSE"), filepath.Join(base, "THIRD_PARTY_NOTICES.md")}
-	browsers := map[string]string{"chrome": "Google/Chrome", "chromium": "Chromium", "edge": "Microsoft Edge", "brave": "BraveSoftware/Brave-Browser"}
+	browsers := map[string]string{"chrome": "Google/Chrome", "chromium": "Chromium", "edge": "Microsoft Edge", "brave": "BraveSoftware/Brave-Browser", "firefox": "Mozilla"}
 	for browser, dir := range browsers {
 		manifest := filepath.Join(home, "Library", "Application Support", filepath.FromSlash(dir), "NativeMessagingHosts", buildinfo.HostName+".json")
 		db, exists, err := registeredDatabase(manifest)

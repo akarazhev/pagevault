@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0
+
+- Added a Firefox 140+ package generated from the shared Chromium extension sources.
+- Added Firefox Native Messaging registration and installer support on macOS, Linux and Windows.
+- Added Firefox browser tests and installation/signing documentation; archive schema 1 and Chromium's extension identity remain unchanged.
+
 ## 1.4.0
 
 - Improved queue recovery, Native Messaging validation, archive checks and installer rollback.

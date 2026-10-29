@@ -1,4 +1,5 @@
 import { $, send, notice, errorText, hostSummary, hostConnection, date, bytes } from './common.js';
+import { extensionAPI as chrome } from '../lib/browser.js';
 let current = null;
 let busy = false;
 const message = $('#message');

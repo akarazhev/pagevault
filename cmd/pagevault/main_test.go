@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -51,6 +52,64 @@ func TestBrowserArgumentsDoNotOverrideDatabase(t *testing.T) {
 	}
 	if _, _, err := parseServeArgs([]string{"unexpected-file"}, &bytes.Buffer{}); err == nil {
 		t.Fatal("unexpected positional argument accepted")
+	}
+}
+
+func TestFirefoxStartupMetadataDoesNotOverrideDatabase(t *testing.T) {
+	manifest := filepath.Join(t.TempDir(), "Нативный manifest.json")
+	for _, id := range []string{"pagevault@pagevault.local", "custom@example.org", "{12345678-1234-1234-1234-123456789abc}"} {
+		db, diagnose, err := parseServeArgs([]string{manifest, id}, &bytes.Buffer{})
+		if err != nil || diagnose || db != "" {
+			t.Fatalf("%q %v %v", db, diagnose, err)
+		}
+	}
+	for _, args := range [][]string{{manifest}, {manifest, "--diagnose"}, {manifest, "not-an-id"}, {"relative.json", "custom@example.org"}, {manifest, "pagevault@pagevault.local", "extra"}} {
+		if _, _, err := parseServeArgs(args, &bytes.Buffer{}); err == nil {
+			t.Fatalf("accepted malformed metadata %v", args)
+		}
+	}
+}
+
+func TestFirefoxLaunchServesFramedProtocolUsingConfiguredArchive(t *testing.T) {
+	dir := t.TempDir()
+	db := filepath.Join(dir, "Архив.sqlite3")
+	t.Setenv("PAGEVAULT_DB", "")
+	config, _ := json.Marshal(map[string]any{"schema_version": 1, "db_path": db})
+	if err := os.WriteFile(filepath.Join(dir, "pagevault.json"), config, 0600); err != nil {
+		t.Fatal(err)
+	}
+	request := []byte(`{"id":"firefox-ping","type":"ping"}`)
+	var input, output, errors bytes.Buffer
+	if err := binary.Write(&input, binary.NativeEndian, uint32(len(request))); err != nil {
+		t.Fatal(err)
+	}
+	input.Write(request)
+	args := []string{filepath.Join(dir, "metadata-only.json"), "pagevault@pagevault.local"}
+	if code := run(args, &input, &output, &errors, filepath.Join(dir, "pagevault-host")); code != 0 {
+		t.Fatalf("%d: %s", code, errors.String())
+	}
+	if errors.Len() != 0 || output.Len() < 4 {
+		t.Fatalf("unexpected protocol output: %q / %s", output.Bytes(), errors.String())
+	}
+	length := binary.NativeEndian.Uint32(output.Bytes()[:4])
+	if int(length) != output.Len()-4 {
+		t.Fatal("stdout contains non-protocol data")
+	}
+	var reply struct {
+		ID   string `json:"id"`
+		OK   bool   `json:"ok"`
+		Data struct {
+			DBPath string `json:"db_path"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(output.Bytes()[4:], &reply); err != nil {
+		t.Fatal(err)
+	}
+	if reply.ID != "firefox-ping" || !reply.OK || reply.Data.DBPath != db {
+		t.Fatal(reply)
+	}
+	if _, err := os.Stat(args[0]); !os.IsNotExist(err) {
+		t.Fatal("native metadata was used as a file", err)
 	}
 }
 

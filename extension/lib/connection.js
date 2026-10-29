@@ -50,14 +50,14 @@ export function connectionState(host, extensionVersion) {
 export function normalizePlatform(value) {
   return ['mac', 'win', 'linux'].includes(value) ? value : 'unknown';
 }
-export function platformInstructions(platform) {
+export function platformInstructions(platform, browser = 'chromium') {
+  const firefox = browser === 'firefox';
   switch (normalizePlatform(platform)) {
     case 'mac':
       return {
         detail:
           'macOS 13 or later: open GitHub Releases and choose the -unsigned.pkg package for Intel and Apple Silicon.',
-        install:
-          'Open the .pkg and select your browsers. The package is not signed by Apple; macOS may require permission in Privacy & Security. Installation preserves the existing archive path.',
+        install: `Open the .pkg and select ${firefox ? 'Firefox' : 'your browsers'}. The package is not signed by Apple; macOS may require permission in Privacy & Security. Installation preserves the existing archive path.`,
         command: '',
       };
     case 'win':
@@ -65,15 +65,15 @@ export function platformInstructions(platform) {
         detail:
           'Windows: download and extract the complete PageVault bundle with prebuilt programs.',
         install:
-          'Double-click install-windows.cmd for Chrome. For Edge, Brave or Chromium, follow the instructions below.',
-        command: '.\\install-windows.cmd',
+          'Run the command below from the extracted bundle. Choose the browser where PageVault is installed.',
+        command: '.\\install-windows.cmd' + (firefox ? ' firefox' : ''),
       };
     case 'linux':
       return {
         detail: 'Linux: download and extract the complete PageVault bundle with prebuilt programs.',
         install:
-          'Run the command in a terminal from the bundle directory for Chrome. For Edge, Brave or Chromium, replace chrome with your browser.',
-        command: 'bash install.sh chrome',
+          'Run the command in a terminal from the bundle directory. For Edge, Brave or Chromium, replace chrome with your browser.',
+        command: 'bash install.sh ' + (firefox ? 'firefox' : 'chrome'),
       };
     default:
       return {

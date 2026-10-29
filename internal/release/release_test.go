@@ -106,7 +106,7 @@ func TestSourceWhitelistExclusionsPermissionsAndDeterminism(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := archive(t, out)
-	if len(files) != 13 {
+	if len(files) != 15 {
 		t.Fatalf("unexpected entries (%d): %v", len(files), files)
 	}
 	for name, f := range files {

@@ -19,6 +19,7 @@ func main() {
 	flag.BoolVar(&opts.SourceOnly, "source-only", false, "package source without compiling or including hosts")
 	flag.BoolVar(&opts.SkipBuild, "skip-build", false, "package the six existing bin platform hosts without compiling")
 	flag.BoolVar(&opts.ExtensionOnly, "extension-only", false, "package only the browser extension and LICENSE, with manifest.json at ZIP root")
+	flag.StringVar(&opts.Browser, "browser", "chromium", "extension package browser: chromium or firefox")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "release: unexpected positional arguments")
@@ -27,6 +28,9 @@ func main() {
 	if opts.Output == "" {
 		if opts.ExtensionOnly {
 			opts.Output = "dist/PageVault-Extension-" + buildinfo.Version + ".zip"
+			if opts.Browser == "firefox" {
+				opts.Output = "dist/PageVault-Firefox-" + buildinfo.Version + ".zip"
+			}
 		} else {
 			opts.Output = "dist/PageVault-" + buildinfo.Version + ".zip"
 		}

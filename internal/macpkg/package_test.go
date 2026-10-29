@@ -173,7 +173,7 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 			closures[ref.ID] = ref.MustClose.Apps[0].ID
 		}
 	}
-	for _, id := range []string{"core", "chrome", "chromium", "edge", "brave"} {
+	for _, id := range []string{"core", "chrome", "chromium", "edge", "brave", "firefox"} {
 		if urls["com.pagevault.host."+id] != 1 {
 			t.Fatalf("ambiguous package URL for %s: %d", id, urls["com.pagevault.host."+id])
 		}
@@ -190,7 +190,7 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 	if choices["chrome"] != "true" {
 		t.Fatal("Chrome not selected by default", choices)
 	}
-	for _, b := range []string{"chromium", "edge", "brave"} {
+	for _, b := range []string{"chromium", "edge", "brave", "firefox"} {
 		if choices[b] != "false" {
 			t.Fatal("optional browser not opt-in", b)
 		}
@@ -249,7 +249,7 @@ func TestRealPackageRegistersTemporaryHomeAndReadsThroughMCP(t *testing.T) {
 	if err := os.CopyFS(home, os.DirFS(payload)); err != nil {
 		t.Fatal(err)
 	}
-	for _, browser := range []string{"chrome", "chromium", "edge", "brave"} {
+	for _, browser := range []string{"chrome", "chromium", "edge", "brave", "firefox"} {
 		script := filepath.Join(expanded, browser+".pkg", "Scripts", "postinstall")
 		command(t, ctx, "/bin/sh", script, output, "/", home)
 	}

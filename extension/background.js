@@ -1,3 +1,4 @@
+import { extensionAPI as chrome } from './lib/browser.js';
 import { HOST_NAME, CAPTURE_FILES, normalizeSettings } from './lib/config.js';
 import {
   pageOrigin,

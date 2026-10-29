@@ -5,11 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const root = path.join(__dirname, '..');
-const { chromium } = require(
-  process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES
-    ? path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES, 'playwright')
-    : 'playwright',
-);
+const { launchBrowser } = require('./helpers.cjs');
 let browser, server, origin;
 before(async () => {
   server = http.createServer((req, res) => {
@@ -22,11 +18,7 @@ before(async () => {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
-  browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.PAGEVAULT_CHROMIUM_PATH || undefined,
-    args: ['--no-sandbox'],
-  });
+  browser = await launchBrowser();
 });
 after(async () => {
   if (browser) await browser.close();

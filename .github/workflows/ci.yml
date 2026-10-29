@@ -25,9 +25,9 @@ jobs:
           node-version-file: .nvmrc
       - run: npm install --global npm@12.2.1
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox
         if: runner.os == 'Linux'
-      - run: npx playwright install chromium
+      - run: npx playwright install chromium firefox
         if: runner.os != 'Linux'
       - run: go test ./cmd/... ./internal/...
       - run: go vet ./cmd/... ./internal/...
@@ -37,6 +37,7 @@ jobs:
       - run: npm run format:check
       - run: npm run check
       - run: npm test
+      - run: npm run test:firefox
       - name: Validate PowerShell syntax
         if: runner.os == 'Windows'
         shell: pwsh
@@ -54,6 +55,8 @@ jobs:
           go build -o bin/windows-amd64/pagevault-host.exe ./cmd/pagevault
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./install-windows.ps1 -DryRun -Db (Join-Path $env:USERPROFILE 'archive.sqlite3')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./install-windows.ps1 -Browser firefox -ExtensionId 'pagevault@pagevault.local' -DryRun -Db (Join-Path $env:USERPROFILE 'archive.sqlite3')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   build:
     runs-on: ubuntu-24.04

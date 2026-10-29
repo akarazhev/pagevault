@@ -12,6 +12,7 @@ import {
   downloadJSON,
 } from './common.js';
 import { DOWNLOADS_URL, normalizePlatform, platformInstructions } from '../lib/connection.js';
+import { extensionAPI as chrome } from '../lib/browser.js';
 const message = $('#message');
 const keys = ['captureIntervalSeconds', 'debounceMs', 'maxBlocks', 'maxTextChars', 'maxHtmlChars'];
 let settingsLoaded = false;
@@ -144,7 +145,10 @@ async function checkConnection(showNotice = true) {
 $('#check-connection').addEventListener('click', () => checkConnection());
 $('#setup-check-connection').addEventListener('click', () => checkConnection());
 function renderPlatform() {
-  const info = platformInstructions($('#download-platform').value);
+  const browser = chrome?.runtime?.getManifest?.()?.browser_specific_settings?.gecko
+    ? 'firefox'
+    : 'chromium';
+  const info = platformInstructions($('#download-platform').value, browser);
   $('#platform-detail').textContent = info.detail;
   $('#platform-install').textContent = info.install;
   $('#platform-command').hidden = !info.command;
@@ -159,7 +163,7 @@ renderPlatform();
 async function detectPlatform() {
   let platform = 'unknown';
   try {
-    platform = normalizePlatform((await globalThis.chrome?.runtime?.getPlatformInfo?.())?.os);
+    platform = normalizePlatform((await chrome?.runtime?.getPlatformInfo?.())?.os);
   } catch {
     /* Keep the manual selector available. */
   }
@@ -180,8 +184,7 @@ $('#retry-queue').addEventListener('click', async () => {
     $('#retry-queue').disabled = false;
   }
 });
-$('#extension-id').textContent =
-  globalThis.chrome?.runtime?.id || 'Open the installed extension settings';
+$('#extension-id').textContent = chrome?.runtime?.id || 'Open the installed extension settings';
 checkConnection(false);
 detectPlatform();
 

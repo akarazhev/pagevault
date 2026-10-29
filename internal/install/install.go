@@ -49,6 +49,9 @@ func absolute(path, home string) (string, error) {
 }
 
 func extensionID(o Options) (string, error) {
+	if o.Browser == "firefox" {
+		return firefoxExtensionID(o)
+	}
 	id := o.ExtensionID
 	if id == "" && o.ExtensionManifest != "" {
 		b, err := os.ReadFile(o.ExtensionManifest)
@@ -91,11 +94,11 @@ func extensionID(o Options) (string, error) {
 // applies it. Uninstallation removes only this browser's registration; runtime
 // files and all databases remain available for an upgrade or a running host.
 func Run(o Options) (map[string]any, error) {
-	linux := map[string]string{"chrome": "google-chrome", "chromium": "chromium", "edge": "microsoft-edge", "brave": "BraveSoftware/Brave-Browser"}
-	darwin := map[string]string{"chrome": "Google/Chrome", "chromium": "Chromium", "edge": "Microsoft Edge", "brave": "BraveSoftware/Brave-Browser"}
-	registry := map[string]string{"chrome": `Google\Chrome`, "chromium": `Chromium`, "edge": `Microsoft\Edge`, "brave": `BraveSoftware\Brave-Browser`}
+	linux := map[string]string{"chrome": "google-chrome", "chromium": "chromium", "edge": "microsoft-edge", "brave": "BraveSoftware/Brave-Browser", "firefox": ""}
+	darwin := map[string]string{"chrome": "Google/Chrome", "chromium": "Chromium", "edge": "Microsoft Edge", "brave": "BraveSoftware/Brave-Browser", "firefox": "Mozilla"}
+	registry := map[string]string{"chrome": `Google\Chrome`, "chromium": `Chromium`, "edge": `Microsoft\Edge`, "brave": `BraveSoftware\Brave-Browser`, "firefox": `Mozilla`}
 	if _, ok := linux[o.Browser]; !ok {
-		return nil, errors.New("unsupported browser; choose chrome, chromium, edge or brave")
+		return nil, errors.New("unsupported browser; choose chrome, chromium, edge, brave or firefox")
 	}
 	system := o.Platform
 	if system == "" {
@@ -122,6 +125,9 @@ func Run(o Options) (map[string]any, error) {
 	case "Linux":
 		app = filepath.Join(home, ".local", "share", "pagevault")
 		native = filepath.Join(home, ".config", filepath.FromSlash(linux[o.Browser]), "NativeMessagingHosts")
+		if o.Browser == "firefox" {
+			native = filepath.Join(home, ".mozilla", "native-messaging-hosts")
+		}
 	case "Darwin":
 		app = filepath.Join(home, "Library", "Application Support", "PageVault")
 		native = filepath.Join(home, "Library", "Application Support", filepath.FromSlash(darwin[o.Browser]), "NativeMessagingHosts")
@@ -198,6 +204,10 @@ func Run(o Options) (map[string]any, error) {
 		}
 	}
 	manifest := map[string]any{"name": buildinfo.HostName, "description": "PageVault local SQLite archive", "path": executable, "type": "stdio", "allowed_origins": []string{"chrome-extension://" + id + "/"}}
+	if o.Browser == "firefox" {
+		delete(manifest, "allowed_origins")
+		manifest["allowed_extensions"] = []string{id}
+	}
 	plan := map[string]any{"system": system, "browser": o.Browser, "runtime_dir": runtimeDir, "db_path": db, "executable_path": executable, "config_path": config, "manifest_path": manifestPath, "manifest": manifest, "uninstall": o.Uninstall, "dry_run": o.DryRun}
 	if system == "Windows" {
 		plan["registry_key"] = `Software\` + registry[o.Browser] + `\NativeMessagingHosts\` + buildinfo.HostName

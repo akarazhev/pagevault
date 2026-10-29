@@ -124,7 +124,7 @@ func TestExplicitExtensionManifestAndID(t *testing.T) {
 }
 
 func TestInvalidOptionsAndCrossPlatformWrite(t *testing.T) {
-	for _, o := range []Options{{Browser: "firefox", DryRun: true}, {Browser: "chrome", Platform: "Plan9", DryRun: true}, {Browser: "chrome", ExtensionID: strings.Repeat("z", 32), DryRun: true}, {Browser: "../chrome", DryRun: true}} {
+	for _, o := range []Options{{Browser: "safari", DryRun: true}, {Browser: "chrome", Platform: "Plan9", DryRun: true}, {Browser: "chrome", ExtensionID: strings.Repeat("z", 32), DryRun: true}, {Browser: "../chrome", DryRun: true}} {
 		if _, err := Run(o); err == nil {
 			t.Fatalf("accepted %+v", o)
 		}

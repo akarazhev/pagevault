@@ -1,6 +1,6 @@
 # Support and limitations
 
-PageVault supports desktop Chrome, Chromium, Edge and Brave with an unpacked extension. The minimum Chrome version is 116.
+PageVault builds desktop Chrome, Chromium, Edge and Brave extensions (Chrome 116+) and a Firefox extension (Firefox 140+). Chromium uses unpacked installation. Firefox's generated ZIP supports temporary development installation; permanent release/beta installation requires Mozilla signing. Firefox Android is not supported.
 
 | Platform | Distribution | Automated coverage |
 | --- | --- | --- |
@@ -8,7 +8,7 @@ PageVault supports desktop Chrome, Chromium, Edge and Brave with an unpacked ext
 | Windows amd64/arm64 | Full ZIP and Windows installer | Go and browser tests; PowerShell syntax and installer dry run |
 | macOS 13+, Intel/Apple Silicon | Full ZIP or universal PKG with extension ZIP | Go and browser tests; package metadata and scripts |
 
-Binaries are built for all six targets. Runtime tests do not cover every architecture or browser configuration. Interactive Windows installation and the macOS 1.4 GUI upgrade have not been verified. The macOS PKG is unsigned and not notarized. See [verification](VERIFICATION.md) for checks.
+Binaries are built for all six targets. Runtime tests do not cover every architecture or browser configuration. Interactive Windows installation and macOS GUI upgrades have not been verified. The macOS PKG is unsigned and not notarized. See [verification](VERIFICATION.md) for checks.
 
 Report bugs through [GitHub issues](https://github.com/akarazhev/pagevault/issues) and vulnerabilities through the [security policy](../SECURITY.md). Fixes target the current release; response times are not guaranteed.
 

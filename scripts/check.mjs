@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'extension/manifest.json'), 'utf8'));
 const required = [
   manifest.background.service_worker,
+  'lib/browser.js',
   manifest.action.default_popup,
   manifest.options_page,
   ...CAPTURE_FILES,

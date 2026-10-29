@@ -14,6 +14,7 @@ var browsers = []struct{ ID, Name, BundleID string }{
 	{"chromium", "Chromium", "org.chromium.Chromium"},
 	{"edge", "Microsoft Edge", "com.microsoft.edgemac"},
 	{"brave", "Brave", "com.brave.Browser"},
+	{"firefox", "Mozilla Firefox", "org.mozilla.firefox"},
 }
 
 func distributionXML() []byte {
