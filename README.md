@@ -1,4 +1,23 @@
-# PageVault
+<p align="center">
+  <img src="extension/icons/icon128.png" alt="PageVault icon" width="96" height="96">
+</p>
+
+<h1 align="center">PageVault</h1>
+
+<p align="center">
+  <a href="https://github.com/akarazhev/pagevault/releases">
+    <img src="https://img.shields.io/github/v/release/akarazhev/pagevault?label=release&amp;color=087f78" alt="Latest release">
+  </a>
+  <a href="https://github.com/akarazhev/pagevault/actions/workflows/ci.yml">
+    <img src="https://github.com/akarazhev/pagevault/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status on main">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT">
+  </a>
+  <a href="docs/INSTALLATION.md">
+    <img src="https://img.shields.io/badge/browsers-Chrome%20%7C%20Chromium%20%7C%20Edge%20%7C%20Brave-087f78" alt="Browsers: Chrome, Chromium, Edge and Brave">
+  </a>
+</p>
 
 PageVault saves web page content in a local SQLite archive. Enable recording for a site to collect structured snapshots as you browse. Search saved pages, view earlier snapshots, export JSON or read the archive through an MCP client.
 
