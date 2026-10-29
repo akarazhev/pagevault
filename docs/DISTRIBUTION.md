@@ -1,7 +1,31 @@
-# Distribution and support
+# Releases
 
-PageVault is free and distributed as named GitHub Release assets, including the full ZIP, standalone extension ZIP, unsigned macOS PKG and their SHA-256 files. The extension is loaded unpacked and upgraded manually. The PKG is not signed or notarized. No store submission or paid account is required. See [installation](INSTALLATION.md) and [upgrading](UPGRADING.md).
+PageVault is distributed free through [GitHub Releases](https://github.com/akarazhev/pagevault/releases). The extension is loaded unpacked and updated manually. See [installation](INSTALLATION.md) and [upgrading](UPGRADING.md).
 
-For a release, run the local gates in [verification](VERIFICATION.md), build all three artifacts, inspect their content and verify checksums, and require the hosted CI checks on the release commit. Stage a draft, download and verify its assets, then publish the matching tag. Keep previous release assets and tags intact. Do not claim cross-compilation or CI is certification of every hardware and browser combination.
+## Build
 
-Use GitHub issues for reproducible bugs and feature requests; remove private archive data from reports. For security vulnerabilities use [private reporting](https://github.com/akarazhev/pagevault/security/advisories/new). See [support and readiness](PRODUCTION_READINESS.md) and [contributing](../CONTRIBUTING.md).
+Run from the repository root with the [development tools](../CONTRIBUTING.md):
+
+```sh
+go run ./cmd/release
+go run ./cmd/release --extension-only
+```
+
+The full ZIP includes six host binaries, the extension, source and documentation. The extension ZIP contains the extension and license with `manifest.json` at its root. Both are written to `dist/` with SHA-256 files.
+
+On macOS, build the universal installer with:
+
+```sh
+go run ./cmd/package-macos --unsigned
+```
+
+The PKG is unsigned and not notarized. Its executable has an ad-hoc signature, which does not establish developer identity. It installs the helper separately from the extension.
+
+## Publish
+
+1. Run the [verification checks](VERIFICATION.md) and require passing CI on the release commit.
+2. Build all three artifacts. Check versions, contents, licenses and SHA-256 files.
+3. Upload to a draft release. Download its assets and verify their bytes and checksums before publishing with the matching tag.
+4. Keep existing published assets and tags intact.
+
+Artifact and checksum writes roll back ordinary failures, but an interrupted process can leave an incomplete pair. Recheck both files after an interruption.

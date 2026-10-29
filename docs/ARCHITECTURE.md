@@ -1,7 +1,15 @@
 # Architecture
 
-The extension extracts loaded DOM into structured blocks. Site adapters add metadata; content scripts observe changes and SPA navigation. The background validates senders and site permissions, stores accepted captures in IndexedDB, and sends them through one persistent Native Messaging port. Only a successful SQLite commit acknowledges and removes the matching queued revision. Retries and revision checks protect a newer replacement from an older response.
+The extension extracts loaded DOM content into structured blocks. Content scripts observe page changes and SPA navigation; site adapters add metadata. The background validates senders and permissions, queues captures in IndexedDB and delivers them over a persistent Native Messaging connection. A successful SQLite commit acknowledges the matching queue revision. Revision checks prevent an old response from removing a newer capture.
 
-The Go helper opens SQLite once per native session. `pages` identifies exact URLs; `captures` holds unique snapshot JSON; `blocks` holds unique observed blocks in first-seen order. WAL, transactions and foreign keys support concurrent access. Semantic hashing excludes timestamps and HTML; the database remains schema 1. The installer registers a separate helper for each browser without a persistent daemon. macOS PKG uses the same installer and preserves an existing registered database path.
+The Go helper opens one SQLite connection per native session. The archive has three main tables:
 
-The UI searches, views and exports data without executing saved HTML. MCP is a separate stdio process opening the existing database read-only; it exposes five bounded read tools, not SQL or filesystem access. It sees later committed writes. Full documents are chunked with Unicode offsets and hashes to prevent mixing revisions. See [schema](SCHEMA.md), [native protocol](NATIVE_PROTOCOL.md), [MCP](MCP.md), and [adapters](ADAPTERS.md).
+- `pages`: exact URLs and page metadata.
+- `captures`: unique snapshots stored as JSON.
+- `blocks`: unique observed blocks in first-seen order.
+
+Transactions, foreign keys and WAL support consistent writes and concurrent readers. Semantic hashes exclude timestamps and HTML. The installer registers a helper for each browser; no daemon runs between sessions.
+
+The archive UI searches, displays and exports structured data without executing saved HTML. MCP runs as a separate stdio process, opens an existing archive read-only and sees subsequent commits. Its five tools expose archive queries without arbitrary SQL or filesystem access. Large documents use chunks with Unicode offsets and content hashes.
+
+See [data format](SCHEMA.md), [Native Messaging](NATIVE_PROTOCOL.md), [MCP](MCP.md) and [site adapters](ADAPTERS.md).

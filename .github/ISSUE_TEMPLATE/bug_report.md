@@ -3,12 +3,14 @@ name: Bug report
 about: Report reproducible behavior
 ---
 
-**What happened?**
+## What happened
 
-**Steps to reproduce**
+## Steps to reproduce
 
-**Expected behavior**
+## Expected behavior
 
-**PageVault version, operating system and browser**
+## Version, operating system and browser
 
-**Relevant error or logs** (remove private URLs, page content and paths)
+## Error messages or logs
+
+Remove private URLs, page content and personal paths.

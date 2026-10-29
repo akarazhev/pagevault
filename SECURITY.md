@@ -1,5 +1,7 @@
 # Security policy
 
-Report suspected vulnerabilities privately using [GitHub private vulnerability reporting](https://github.com/akarazhev/pagevault/security/advisories/new). Include reproduction steps and affected versions, with synthetic data where possible. Do not post sensitive details in a public issue. Maintainers will assess reports and coordinate a fix and disclosure as appropriate; no response deadline is promised.
+Report vulnerabilities through [GitHub private reporting](https://github.com/akarazhev/pagevault/security/advisories/new). Include affected versions and reproduction steps using synthetic data. Keep sensitive details out of public issues.
 
-The current release is the supported target for fixes. PageVault stores potentially sensitive content locally; protect the database, queue, exports and backups. MCP clients can expose retrieved content to their model providers. See [privacy](docs/PRIVACY.md).
+Security fixes target the current release. Maintainers coordinate fixes and disclosure; response times are not guaranteed.
+
+Archives, queues, exports and backups can contain private content. MCP clients may send retrieved content to model providers. See [privacy](docs/PRIVACY.md).

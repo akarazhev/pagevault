@@ -58,7 +58,7 @@ var rootFiles = []string{
 
 var docFiles = []string{
 	"ARCHITECTURE.md", "ADAPTERS.md", "SCHEMA.md", "NATIVE_PROTOCOL.md",
-	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "INSTALLATION.md", "PRIVACY.md", "CHROME_WEB_STORE.md", "PRODUCTION_READINESS.md", "extension-id.txt",
+	"VERIFICATION.md", "UPGRADING.md", "MCP.md", "DISTRIBUTION.md", "INSTALLATION.md", "PRIVACY.md", "PRODUCTION_READINESS.md", "extension-id.txt",
 }
 
 // Run validates source identity, optionally builds all supported platforms, and

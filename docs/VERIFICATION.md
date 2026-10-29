@@ -1,7 +1,21 @@
 # Verification
 
-Run `go test ./...`, `go vet ./...`, `go test -race ./...`, `npm ci`, `npm test`, `npm run lint`, `npm run format:check`, `npm run check`, `npm audit` and `govulncheck ./cmd/... ./internal/...` with the pinned toolchain and Playwright Chromium. Build and inspect all artifacts and verify their SHA-256 sidecars before release. Tests must use synthetic temporary databases, homes and browser profiles.
+Use the versions and setup in [contributing](../CONTRIBUTING.md). Tests must use synthetic data and temporary databases, homes and browser profiles.
 
-Hosted CI at commit `74a980f` succeeded on Ubuntu 24.04, Windows 2025 and macOS 15: Linux passed 72 JavaScript tests including nine Native Messaging end-to-end tests; Windows and macOS each passed 63 with nine Linux-native tests intentionally skipped. Go tests and vet ran on all three, Linux ran race tests, and lint, format and static checks passed. Six cross-builds and both vulnerability gates passed. Windows CI also parses the PowerShell installer and exercises its dry run in a temporary USERPROFILE; this is not interactive installation certification. Later release commits require their own passing hosted CI.
+Run from the repository root:
 
-Local macOS arm64 synthetic tests exercised native and MCP behavior, expanded PKG pre/post scripts, archive preservation and artifact rollback. Historical 1.1 to 1.3 installation was manually verified; that does not establish an interactive 1.4 GUI upgrade. Cross-compilation does not establish runtime behavior on all architectures. See [readiness](PRODUCTION_READINESS.md).
+```sh
+go test ./...
+go vet ./...
+go test -race ./...
+npm test
+npm run lint
+npm run format:check
+npm run check
+npm audit
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/...
+```
+
+[CI](../.github/workflows/ci.yml) runs Go and JavaScript tests on Ubuntu, Windows and macOS. Native Messaging end-to-end tests and the race detector run on Linux CI. Windows also checks PowerShell syntax and runs the installer with `-DryRun` in a temporary profile. Build jobs cover amd64 and arm64 on all three operating systems.
+
+Before release, inspect ZIP and PKG contents and verify each SHA-256 file. On macOS, expand the PKG and test its scripts against a temporary home. Record interactive installer checks separately: package inspection and cross-compilation do not verify installation on every target. See [releases](DISTRIBUTION.md) and [support limits](PRODUCTION_READINESS.md).

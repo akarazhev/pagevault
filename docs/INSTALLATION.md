@@ -1,25 +1,59 @@
 # Installation
 
-Download the named artifacts and matching SHA-256 files from [GitHub Releases](https://github.com/akarazhev/pagevault/releases). `PageVault-1.4.0.zip` contains six binaries and the extension. `PageVault-Extension-1.4.0.zip` contains the extension and license only. `PageVault-1.4.0-macOS-unsigned.pkg` installs the macOS helper for Intel and Apple Silicon, but not the extension. GitHub's automatic source archives have no binaries.
+PageVault uses a Chromium extension and a local helper. The helper includes SQLite and needs no separate service or language runtime.
 
-Extract the bundle to a permanent directory. On macOS or Linux run `./install.sh chrome`; replace `chrome` with `chromium`, `edge`, or `brave` as needed. On Windows run `install-windows.cmd`, or `./install-windows.ps1 -Browser edge`. Install separately for each browser. The installer displays the runtime and database paths. Use `--db PATH` (Windows: `-Db PATH`) to select a database; selecting a different path does not move data. The helper and SQLite do not require a separate service, Python, Node or Go at runtime.
+## Downloads
 
-Alternatively, on macOS 13 or later, open the unsigned PKG and choose the browsers to register. Close those browsers when prompted. The package is neither Developer ID signed nor notarized. macOS may block it; see [Apple's instructions for opening an individually blocked app](https://support.apple.com/en-us/102445). Organization policy may prevent an exception. Do not disable system protections globally.
+Get the files and matching `.sha256` checksums from [GitHub Releases](https://github.com/akarazhev/pagevault/releases).
 
-Load the unpacked extension from the bundle's `extension` folder, or the extracted standalone ZIP folder, on `chrome://extensions`, `edge://extensions`, or `brave://extensions`: enable developer mode and choose Load unpacked. Keep the directory in place. Check the connection and database path in PageVault settings. The fixed extension ID is `ijkioljfdaaplhaldbdpabckkfcieiee`. See [upgrading](UPGRADING.md) before replacing an installation.
+| File | Contents |
+| --- | --- |
+| `PageVault-1.4.0.zip` | Extension, installers, source and binaries for macOS, Linux and Windows on amd64 and arm64 |
+| `PageVault-Extension-1.4.0.zip` | Extension and license |
+| `PageVault-1.4.0-macOS-unsigned.pkg` | macOS helper for Intel and Apple Silicon; requires macOS 13 or later |
 
-For troubleshooting, confirm the installer targeted the same browser, restart it, and check the settings error and database path. For custom registration paths, run the installer with `--help`; `--runtime-dir`, `--manifest-dir`, `--extension-id`, `--db` and `--dry-run` are supported. `--preserve-registered-db` preserves an existing registration's database path when changing runtime directory. The PKG uses this option.
+GitHub's automatic source archives do not contain binaries. Verify downloads before installing. On macOS or Linux:
 
-## Paths and diagnostics
+```sh
+shasum -a 256 -c PageVault-1.4.0.zip.sha256
+```
 
-| OS | Default database | Default per-browser runtime |
+On Windows, compare `Get-FileHash .\PageVault-1.4.0.zip -Algorithm SHA256` with the checksum file. Substitute the filename for other downloads.
+
+## Install the helper
+
+Extract the full bundle and open a terminal in its directory.
+
+```sh
+./install.sh chrome
+```
+
+On Windows, run `install-windows.cmd` or:
+
+```powershell
+./install-windows.ps1 -Browser chrome
+```
+
+Repeat for each browser, using `chrome`, `chromium`, `edge` or `brave`. To choose a database, pass `--db PATH` on macOS/Linux or `-Db PATH` on Windows. This selects a file; it does not move existing data.
+
+On macOS, you can instead open the PKG and choose browsers in Installer. Close them when prompted. The package is unsigned and not notarized. If macOS blocks it, follow [Apple's instructions](https://support.apple.com/en-us/102445) for an individual exception. Organization policy may prevent installation. Do not disable system protections globally.
+
+## Load the extension
+
+Open `chrome://extensions`, `edge://extensions` or `brave://extensions`, enable developer mode and choose Load unpacked. Select the full bundle's `extension` folder or the extracted standalone extension folder. Keep that directory in place.
+
+Check the helper connection and database path in PageVault settings. The extension ID is `ijkioljfdaaplhaldbdpabckkfcieiee`. Read [upgrading](UPGRADING.md) before replacing an installation.
+
+## Paths and troubleshooting
+
+| OS | Default database | Per-browser helper directory |
 | --- | --- | --- |
 | Linux | `~/.local/share/pagevault/archive.sqlite3` | `~/.local/share/pagevault/host/<browser>/` |
 | macOS | `~/Library/Application Support/PageVault/archive.sqlite3` | `~/Library/Application Support/PageVault/host/<browser>/` |
 | Windows | `%USERPROFILE%\AppData\Local\PageVault\archive.sqlite3` | `%USERPROFILE%\AppData\Local\PageVault\host\<browser>\` |
 
-The actual configured path appears in settings. On macOS PKG stores the universal binary and licenses in `~/Library/Application Support/PageVault/Installer/`; selected browsers have separate runtime copies and configuration. A damaged existing registration stops preservation before replacement; explicitly select the correct existing database with the CLI if repair is needed. Old custom runtime files are not removed.
+Settings shows the configured path. The macOS PKG also installs its shared payload in `~/Library/Application Support/PageVault/Installer/`.
 
-On macOS/Linux verify a downloaded sidecar in its directory with `shasum -a 256 -c PageVault-1.4.0.zip.sha256`. On Windows compare `Get-FileHash .\PageVault-1.4.0.zip -Algorithm SHA256` to the sidecar. Substitute the corresponding file name for the other artifacts. For diagnostics, run the appropriate binary, for example `./bin/darwin-arm64/pagevault-host diagnose` or `bin\windows-amd64\pagevault-host.exe diagnose`. This separate process reports its own PID and connection, not the browser's running session. On connection errors confirm registration and browser, fixed extension ID, helper version and database path; rerun the installer if needed.
+If the helper is unavailable, check the browser registration, extension ID, helper version and database path, then restart the browser. Run the installed helper with `diagnose` for details. A helper from the bundle needs `--db PATH` to diagnose a custom archive; diagnostics run in a separate process from the browser session.
 
-For development, `go run ./cmd/release` builds the full ZIP and six hosts, `go run ./cmd/release --extension-only` builds the extension ZIP, and `go run ./cmd/package-macos --unsigned` builds the universal PKG. The universal executable is ad-hoc signed, which does not establish developer identity or notarization. See [verification](VERIFICATION.md).
+For custom paths, use the helper's `install --help`. It supports `--runtime-dir`, `--manifest-dir`, `--extension-id`, `--db` and `--dry-run`. When changing the helper directory, `--preserve-registered-db` retains the registered database path. The PKG uses this option. An invalid registration stops the update; repair it with an explicit `--db` pointing to the existing archive. Old custom helper directories are not removed.

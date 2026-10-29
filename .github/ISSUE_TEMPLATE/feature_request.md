@@ -3,8 +3,8 @@ name: Feature request
 about: Suggest an improvement
 ---
 
-**Problem or use case**
+## Problem or use case
 
-**Proposed behavior**
+## Proposed behavior
 
-**Alternatives considered**
+## Alternatives considered

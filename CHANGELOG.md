@@ -2,10 +2,10 @@
 
 ## 1.4.0
 
-- Hardened queue delivery and recovery, native messaging, installers, archive access and release artifact handling.
-- English interface and project documentation, community policies, and clearer installation and support guidance.
-- Expanded cross-platform CI, vulnerability checks and release verification.
-- SQLite schema remains 1 and the extension ID remains unchanged. Manual upgrades preserve the configured archive; see [upgrading](docs/UPGRADING.md).
+- Improved queue recovery, Native Messaging validation, archive checks and installer rollback.
+- Added English interface text, documentation and contribution guidelines.
+- Added cross-platform CI, vulnerability checks and release verification.
+- Kept SQLite schema 1 and the extension ID. See [upgrading](docs/UPGRADING.md) to preserve the configured archive.
 
 ## 1.3.0
 

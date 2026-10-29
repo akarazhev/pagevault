@@ -1,23 +1,31 @@
-# Readiness and support
+# Support and limitations
 
-| Platform | Distribution | Evidence and limits |
+PageVault supports desktop Chrome, Chromium, Edge and Brave with an unpacked extension. The minimum Chrome version is 116.
+
+| Platform | Distribution | Automated coverage |
 | --- | --- | --- |
-| Linux amd64/arm64 | Full ZIP, per-browser installer | Linux hosted Chromium runs native end-to-end tests; cross-builds alone do not prove both architectures at runtime. |
-| Windows amd64/arm64 | Full ZIP, per-browser installer | Windows hosted portable tests, PowerShell parse and synthetic dry run; no full interactive installer/browser certification. |
-| macOS 13+ Intel/Apple Silicon | Full ZIP or universal unsigned PKG plus extension ZIP | macOS hosted portable tests and local arm64 synthetic PKG scripts; no interactive 1.4 GUI upgrade certification. PKG is unsigned and not notarized. |
+| Linux amd64/arm64 | Full ZIP and shell installer | Go and browser tests; Native Messaging integration tests on Linux CI |
+| Windows amd64/arm64 | Full ZIP and Windows installer | Go and browser tests; PowerShell syntax and installer dry run |
+| macOS 13+, Intel/Apple Silicon | Full ZIP or universal PKG with extension ZIP | Go and browser tests; package metadata and scripts |
 
-Desktop Chrome, Chromium, Edge and Brave use an unpacked extension (minimum Chrome 116). Real browser and OS configurations vary. Hosted evidence for the earlier hardening commit is in [verification](VERIFICATION.md); release publication requires passing checks on the final commit. Report bugs through GitHub issues and vulnerabilities through [private reporting](https://github.com/akarazhev/pagevault/security/advisories/new). Support targets the current release without a promised response time.
+Binaries are built for all six targets. Runtime tests do not cover every architecture or browser configuration. Interactive Windows installation and the macOS 1.4 GUI upgrade have not been verified. The macOS PKG is unsigned and not notarized. See [verification](VERIFICATION.md) for checks.
 
-MCP preserves positive signed 64-bit archive identifiers exactly. Native Messaging and the extension UI use JavaScript numbers for archive page and capture identifiers; values above `Number.MAX_SAFE_INTEGER` (9007199254740991) have not been verified there.
+Report bugs through [GitHub issues](https://github.com/akarazhev/pagevault/issues) and vulnerabilities through the [security policy](../SECURITY.md). Fixes target the current release; response times are not guaranteed.
+
+## Capture limits
+
+PageVault reads loaded DOM content, including accessible same-origin frames and open shadow roots. Closed shadow roots, cross-origin frames, image text, canvas and PDF viewers may be missing. Media files are not downloaded.
+
+Default limits are 5,000 blocks, 1,000,000 text characters and 2,000,000 HTML characters. Snapshot warnings identify limits reached. Optional HTML is sanitized and never executed by the archive UI.
 
 ## Queue recovery
 
-Settings lists rejected captures by title, bounded URL and queued time, with the error. Export JSON explicitly before discarding if you need the data. Retry after correcting the cause; discard only when the data is no longer needed. Actions apply to the displayed revision, so stale actions cannot delete or retry a replacement. Accepted queue entries remain until committed or explicitly discarded. When the queue is full, new submissions are refused: restore the helper, retry delivery and capture again. See [upgrading](UPGRADING.md) for backups and manual upgrades.
+The queue holds up to 500 captures or 128 MiB, including rejected entries. When full, it refuses new captures without deleting accepted data. Restore the helper connection, retry delivery and capture the page again.
 
-## Design decisions and costs
+Settings lists rejected captures with their title, URL, time and error. Correct the cause before retrying. Export JSON before discarding data you need. Retry and discard apply to the displayed revision, so an old action cannot affect its replacement. Delivery removes an entry only after its matching revision is committed. Deleting an archived page also clears pending captures for that URL.
 
-- Domain pagination preserves exact hostnames and scans as needed for accurate counts; byte limits may shorten pages, so follow the actual `next_offset` rather than assuming the requested limit. Correct totals can cost more work on large archives.
-- Queue totals include rejected data; revision-safe retry, discard and acknowledgement prevent stale operations from losing replacements. Export is an explicit user action.
-- Existing databases must match recognized schema 1. Malformed or partial files are refused and require repair or restoration from backup; they are not silently migrated or overwritten. SQLite files at installer-owned payload paths are refused rather than replaced.
-- Artifact and checksum publication rolls back ordinary paired write failures, but is not crash-atomic across both files. Verify both checksums after interruptions.
-- The canonical Go module is `github.com/akarazhev/pagevault`; version 1.4 retains schema 1, the fixed extension ID, and the existing archive and configuration paths through manual upgrade.
+## Archive limits
+
+Existing databases must match PageVault schema 1. Damaged or unrelated databases are rejected; restore a backup or repair the file before reopening it.
+
+MCP preserves positive signed 64-bit identifiers. Native Messaging and the extension use JavaScript numbers; archive identifiers above `Number.MAX_SAFE_INTEGER` (9007199254740991) have not been verified. See the [protocol reference](NATIVE_PROTOCOL.md).

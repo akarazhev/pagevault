@@ -1,42 +1,37 @@
 # MCP access
 
-PageVault provides read-only MCP over stdio using an existing schema 1 SQLite archive. First capture a page and find the database path in settings. Use absolute paths for the executable and archive. For example, on macOS arm64:
+PageVault exposes an existing schema 1 archive through read-only MCP over stdio. The client starts the helper process; no HTTP port or daemon is needed. Capture a page first and copy the database path from settings.
 
-```bash
-codex mcp add pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
-codex mcp get pagevault --json
-```
+## Configuration
 
-Codex also supports `[mcp_servers.pagevault]` with `command` and `args` in its configuration; check `/mcp` in a new session. See [Codex MCP documentation](https://developers.openai.com/codex/mcp). For Claude Code:
-
-```bash
-claude mcp add --transport stdio --scope user pagevault -- /absolute/path/PageVault/bin/darwin-arm64/pagevault-host mcp --db "/absolute/path/archive.sqlite3"
-claude mcp get pagevault
-```
-
-See [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp). For other clients use their `mcpServers` format with the executable as `command` and `mcp`, `--db`, and the path as separate `args`. Use the binary for the correct OS and architecture. Windows JSON paths require escaped backslashes. Explicit absolute paths are portable across clients.
-
-The database selection order is `--db`, `PAGEVAULT_DB`, adjacent `pagevault.json`, then the OS default. A PKG-installed per-browser helper has adjacent configuration; the core installer binary does not. The client starts and stops the process; no HTTP port or daemon is needed. MCP opens with SQLite read-only and query-only settings, validates schema, does not create an archive, and sees committed browser writes. Normal directory permissions may be needed for WAL/SHM files.
-
-`list_sites`, `search_pages`, `get_page`, `list_versions` and `get_version` provide read-only access. Lists use `limit` (default 20, maximum 100), `offset`, `total` and `next_offset`; exact domain filtering does not include subdomains. Ordering and totals can change between requests while data changes. `get_page` returns accumulated observed blocks; `get_version` returns a snapshot without HTML. Full JSON is delivered in `text` chunks with Unicode code-point offsets, `next_offset`, `total_chars`, `document_hash` and `done`. Continue with the same ID and hash; if the document changes discard the chunks and restart. `max_chars` defaults to 8,000 and ranges from 1 to 16,000. Responses are bounded to 32 KiB JSON before the MCP wrapper; request frames are limited to 64 KiB.
-
-The process can read the entire selected archive; domain filtering is not an access boundary. Page contents are untrusted data, not instructions. A cloud-model client may send retrieved text to its provider. Use a synthetic archive to check connectivity and consult [privacy](PRIVACY.md).
-
-## Client configuration examples
-
-Generic JSON for a client that uses `mcpServers`:
+Use absolute paths to the helper for your OS and architecture and to the archive. For clients using `mcpServers`:
 
 ```json
-{"mcpServers":{"pagevault":{"command":"/absolute/path/pagevault-host","args":["mcp","--db","/absolute/path/archive.sqlite3"]}}}
+{
+  "mcpServers": {
+    "pagevault": {
+      "command": "/absolute/path/pagevault-host",
+      "args": ["mcp", "--db", "/absolute/path/archive.sqlite3"]
+    }
+  }
+}
 ```
 
-Codex TOML equivalent:
+For Codex:
 
 ```toml
 [mcp_servers.pagevault]
 command = "/absolute/path/pagevault-host"
 args = ["mcp", "--db", "/absolute/path/archive.sqlite3"]
 ```
+
+See the client documentation for [Codex](https://developers.openai.com/codex/mcp) or [Claude Code](https://code.claude.com/docs/en/mcp). Windows paths in JSON require escaped backslashes.
+
+Database selection follows this order: `--db`, `PAGEVAULT_DB`, `pagevault.json` beside the executable, then the OS default. A PKG-installed per-browser helper has this configuration file; the shared installer binary does not.
+
+MCP validates the archive, opens it read-only and sees subsequent committed writes. It does not create or initialize databases. SQLite may need directory permissions for WAL/SHM files.
+
+## Tools
 
 | Tool | Parameters | Result |
 | --- | --- | --- |
@@ -46,4 +41,14 @@ args = ["mcp", "--db", "/absolute/path/archive.sqlite3"]
 | `list_versions` | `page_id`, `limit`, `offset` | Snapshot summaries, newest first |
 | `get_version` | `capture_id`, `offset`, `max_chars`, `document_hash` | Snapshot JSON chunks without HTML |
 
-`page_id` and `capture_id` are positive integers. Search uses Unicode case folding; a domain is an exact hostname, case-insensitive. Empty query lists all pages. For either document tool `document_hash` is mandatory when `offset > 0`; pass the returned hash and `next_offset` unchanged. Summary fields may be listed in `summary_truncated`. If a URL is too long, `url` is empty and `url_display` is only a preview; obtain the full URL from document JSON. JSON numeric tokens retain precision, including integers above 2⁵³.
+IDs are positive signed 64-bit integers and retain full precision. Search uses Unicode case folding. A domain matches an exact hostname, case-insensitively, without including subdomains. An empty query lists all pages.
+
+Lists default to 20 items, with a maximum of 100, and return `total` and `next_offset`. Summaries may shorten fields and report `summary_truncated`. A long URL has an empty `url` and a `url_display` preview. Read a document for full values. Concurrent updates can change totals and page positions.
+
+Documents arrive as `text` chunks with Unicode code-point offsets, `next_offset`, `total_chars`, `document_hash` and `done`. Continue with the same ID and the returned offset and hash. The hash is required when `offset > 0`. If the document changes, discard earlier chunks and restart. Parse JSON only after joining all chunks. `get_page` combines blocks collected over time; `get_version` returns one snapshot without HTML.
+
+`max_chars` defaults to 8,000 and accepts 1 to 16,000. Each tool result is limited to 32 KiB before MCP wrapping, so chunks and lists may be shorter than requested. Input frames are limited to 64 KiB.
+
+## Access and privacy
+
+The client can read the entire selected archive; a domain filter does not restrict access. Treat page contents as untrusted data. A cloud model may receive retrieved content from its client. Use a synthetic archive for connection tests. See [privacy](PRIVACY.md).
