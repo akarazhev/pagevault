@@ -15,20 +15,20 @@
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT">
   </a>
   <a href="docs/INSTALLATION.md">
-    <img src="https://img.shields.io/badge/browsers-Chrome%20%7C%20Chromium%20%7C%20Edge%20%7C%20Brave-087f78" alt="Browsers: Chrome, Chromium, Edge and Brave">
+    <img src="https://img.shields.io/badge/browsers-Chrome%20%7C%20Chromium%20%7C%20Edge%20%7C%20Brave%20%7C%20Firefox-087f78" alt="Browsers: Chrome, Chromium, Edge, Brave and Firefox">
   </a>
 </p>
 
 PageVault saves web page content in a local SQLite archive. Enable recording for a site to collect structured snapshots as you browse. Search saved pages, view earlier snapshots, export JSON or read the archive through an MCP client.
 
-The Chromium extension captures loaded text, headings, lists, tables, code, links and media references. A GitLab adapter adds project metadata. The extension and Go helper run locally, without telemetry or a remote service.
+The Chromium and Firefox extensions share one implementation and capture loaded text, headings, lists, tables, code, links and media references. A GitLab adapter adds project metadata. The extension and Go helper run locally, without telemetry or a remote service.
 
 ## Installation
 
-Download `PageVault-1.4.0.zip` and its SHA-256 file from [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Extract the bundle to a permanent directory and verify the checksum.
+Download `PageVault-1.5.0.zip` and its SHA-256 file from [GitHub Releases](https://github.com/akarazhev/pagevault/releases). Extract the bundle to a permanent directory and verify the checksum.
 
-1. Install the helper: run `./install.sh chrome` on macOS or Linux, or `install-windows.cmd` on Windows. Replace `chrome` with `chromium`, `edge` or `brave` as needed.
-2. Open the browser's extensions page, enable developer mode and load the bundle's `extension` folder.
+1. Install the helper: run `./install.sh chrome` on macOS or Linux, or `install-windows.cmd` on Windows. Select `chromium`, `edge`, `brave` or `firefox` as needed; for example, `./install.sh firefox` or `install-windows.cmd firefox`.
+2. For Chromium, open the browser's extensions page, enable developer mode and load the bundle's `extension` folder. For Firefox 140+, use the Firefox package or the bundle's `extension-firefox` folder as described in [installation](docs/INSTALLATION.md#firefox).
 3. Check the helper connection in PageVault settings. Open an HTTP(S) page, enable recording for its site and grant access. Use Capture now for a manual snapshot.
 
 macOS 13 and later also support an unsigned installer for Intel and Apple Silicon. See [installation](docs/INSTALLATION.md) for downloads, checksums and troubleshooting, and [upgrading](docs/UPGRADING.md) before replacing an existing installation.

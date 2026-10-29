@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('chrome', 'chromium', 'edge', 'brave')]
+    [ValidateSet('chrome', 'chromium', 'edge', 'brave', 'firefox')]
     [string]$Browser = 'chrome',
     [string]$Db,
     [string]$ExtensionId,
@@ -17,7 +17,8 @@ $pagevaultExecutable = Join-Path $PSScriptRoot "bin/windows-$pagevaultTarget/pag
 if (-not (Test-Path -LiteralPath $pagevaultExecutable -PathType Leaf)) {
     throw 'Release binary not found. Extract the complete release or run: go run ./cmd/release'
 }
-$pagevaultArguments = @('install', '--browser', $Browser, '--extension-manifest', (Join-Path $PSScriptRoot 'extension/manifest.json'))
+$pagevaultExtension = if ($Browser -eq 'firefox') { 'extension-firefox/manifest.json' } else { 'extension/manifest.json' }
+$pagevaultArguments = @('install', '--browser', $Browser, '--extension-manifest', (Join-Path $PSScriptRoot $pagevaultExtension))
 if ($Db) { $pagevaultArguments += @('--db', $Db) }
 if ($ExtensionId) { $pagevaultArguments += @('--extension-id', $ExtensionId) }
 if ($DryRun) { $pagevaultArguments += '--dry-run' }

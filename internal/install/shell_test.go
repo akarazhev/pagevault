@@ -29,6 +29,7 @@ func TestShellInstallerMakesHostExecutableAndForwardsArguments(t *testing.T) {
 		}
 		mustWrite(t, filepath.Join(root, name), data)
 	}
+	mustWrite(t, filepath.Join(root, "extension-firefox", "manifest.json"), []byte(`{"browser_specific_settings":{"gecko":{"id":"pagevault@pagevault.local"}}}`))
 	binary := filepath.Join(root, "bin", runtime.GOOS+"-"+runtime.GOARCH, "pagevault-host")
 	if err := os.MkdirAll(filepath.Dir(binary), 0700); err != nil {
 		t.Fatal(err)
@@ -44,17 +45,19 @@ func TestShellInstallerMakesHostExecutableAndForwardsArguments(t *testing.T) {
 	db := filepath.Join(root, "Данные & записи", "manual test.sqlite3")
 	runtimeDir := filepath.Join(root, "runtime")
 	manifestDir := filepath.Join(root, "registration")
-	command := exec.Command("bash", filepath.Join(root, "install.sh"), "chrome", "--db", db, "--runtime-dir", runtimeDir, "--manifest-dir", manifestDir, "--home", filepath.Join(root, "home"), "--dry-run")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("shell installer: %v\n%s", err, output)
-	}
-	var result map[string]any
-	if err := json.NewDecoder(strings.NewReader(string(output))).Decode(&result); err != nil {
-		t.Fatalf("decode install plan: %v\n%s", err, output)
-	}
-	if result["browser"] != "chrome" || result["db_path"] != db || result["dry_run"] != true {
-		t.Fatalf("installer changed forwarded arguments: %v", result)
+	for _, browser := range []string{"chrome", "firefox"} {
+		command := exec.Command("bash", filepath.Join(root, "install.sh"), browser, "--db", db, "--runtime-dir", runtimeDir, "--manifest-dir", manifestDir, "--home", filepath.Join(root, "home"), "--dry-run")
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("shell installer: %v\n%s", err, output)
+		}
+		var result map[string]any
+		if err := json.NewDecoder(strings.NewReader(string(output))).Decode(&result); err != nil {
+			t.Fatalf("decode install plan: %v\n%s", err, output)
+		}
+		if result["browser"] != browser || result["db_path"] != db || result["dry_run"] != true {
+			t.Fatalf("installer changed forwarded arguments: %v", result)
+		}
 	}
 	info, err := os.Stat(binary)
 	if err != nil {

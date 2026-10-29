@@ -88,6 +88,20 @@ func TestPackagePreflightRejectsActiveUnselectedRegistration(t *testing.T) {
 	}
 }
 
+func TestPackagePreflightProtectsFirefoxRegisteredArchive(t *testing.T) {
+	home := t.TempDir()
+	runtime := filepath.Join(home, "custom firefox runtime")
+	db := filepath.Join(home, "Library", "Application Support", "PageVault", "Installer", "LICENSE")
+	config, _ := json.Marshal(map[string]any{"schema_version": 1, "db_path": db})
+	mustWrite(t, filepath.Join(runtime, "pagevault.json"), config)
+	manifest := filepath.Join(home, "Library", "Application Support", "Mozilla", "NativeMessagingHosts", "com.pagevault.host.json")
+	data, _ := json.Marshal(map[string]any{"name": "com.pagevault.host", "type": "stdio", "path": filepath.Join(runtime, "pagevault-host")})
+	mustWrite(t, manifest, data)
+	if err := CheckPackagePayload(home); err == nil {
+		t.Fatal("Firefox archive could be overwritten by installer payload")
+	}
+}
+
 func TestPackagePreflightRejectsFallbackConfigWithAbsentPayload(t *testing.T) {
 	for _, name := range []string{"pagevault-host", "LICENSE", "THIRD_PARTY_NOTICES.md"} {
 		t.Run(name, func(t *testing.T) {

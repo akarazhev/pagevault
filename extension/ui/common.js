@@ -1,4 +1,5 @@
 import { connectionState } from '../lib/connection.js';
+import { extensionAPI as chrome } from '../lib/browser.js';
 export const $ = (selector, parent = document) => parent.querySelector(selector);
 export function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -7,7 +8,7 @@ export function el(tag, className, text) {
   return node;
 }
 export async function send(type, args = {}) {
-  if (!globalThis.chrome?.runtime?.sendMessage)
+  if (!chrome?.runtime?.sendMessage)
     throw new Error('Open this page from the installed PageVault extension.');
   const response = await chrome.runtime.sendMessage({ type, ...args });
   if (!response?.ok)
@@ -225,5 +226,5 @@ export function hostSummary(status) {
   return hostConnection(status).label;
 }
 export function hostConnection(status) {
-  return connectionState(status?.host, globalThis.chrome?.runtime?.getManifest?.()?.version);
+  return connectionState(status?.host, chrome?.runtime?.getManifest?.()?.version);
 }

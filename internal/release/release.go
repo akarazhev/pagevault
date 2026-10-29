@@ -29,6 +29,7 @@ type Options struct {
 	SourceOnly    bool
 	SkipBuild     bool
 	ExtensionOnly bool
+	Browser       string
 }
 
 type target struct{ os, arch string }
@@ -64,6 +65,12 @@ var docFiles = []string{
 // Run validates source identity, optionally builds all supported platforms, and
 // writes Output and Output.sha256. Failed builds never produce a release ZIP.
 func Run(ctx context.Context, opts Options) error {
+	if opts.Browser == "" {
+		opts.Browser = "chromium"
+	}
+	if opts.Browser != "chromium" && opts.Browser != "firefox" {
+		return fmt.Errorf("unsupported extension browser; choose chromium or firefox")
+	}
 	if opts.SourceOnly && opts.SkipBuild {
 		return fmt.Errorf("-source-only and -skip-build are mutually exclusive")
 	}
@@ -88,6 +95,9 @@ func Run(ctx context.Context, opts Options) error {
 		name := "PageVault-" + buildinfo.Version + ".zip"
 		if opts.ExtensionOnly {
 			name = "PageVault-Extension-" + buildinfo.Version + ".zip"
+			if opts.Browser == "firefox" {
+				name = "PageVault-Firefox-" + buildinfo.Version + ".zip"
+			}
 		}
 		opts.Output = filepath.Join("dist", name)
 	}
@@ -167,13 +177,24 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}
 	entries = filtered
+	if !opts.ExtensionOnly || opts.Browser == "firefox" {
+		firefox, err := firefoxEntries(entries)
+		if err != nil {
+			return err
+		}
+		entries = append(entries, firefox...)
+	}
 	prefix := "pagevault/"
 	if opts.ExtensionOnly {
 		prefix = ""
+		extensionPrefix := "extension/"
+		if opts.Browser == "firefox" {
+			extensionPrefix = "extension-firefox/"
+		}
 		only := entries[:0]
 		for _, e := range entries {
-			if strings.HasPrefix(e.name, "extension/") {
-				e.name = strings.TrimPrefix(e.name, "extension/")
+			if strings.HasPrefix(e.name, extensionPrefix) {
+				e.name = strings.TrimPrefix(e.name, extensionPrefix)
 				only = append(only, e)
 			} else if e.name == "LICENSE" {
 				only = append(only, e)

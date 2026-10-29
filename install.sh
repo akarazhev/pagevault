@@ -19,5 +19,7 @@ fi
 chmod u+x "$pagevault_binary"
 pagevault_browser="${1:-chrome}"
 if [[ $# -gt 0 ]]; then shift; fi
-"$pagevault_binary" install --browser "$pagevault_browser" --extension-manifest "$pagevault_root/extension/manifest.json" "$@"
+pagevault_extension=extension
+if [[ "$pagevault_browser" == firefox ]]; then pagevault_extension=extension-firefox; fi
+"$pagevault_binary" install --browser "$pagevault_browser" --extension-manifest "$pagevault_root/$pagevault_extension/manifest.json" "$@"
 echo "See README.md for extension setup and upgrades."

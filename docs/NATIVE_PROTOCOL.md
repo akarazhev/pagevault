@@ -4,6 +4,8 @@ The host `com.pagevault.host` exchanges UTF-8 JSON frames prefixed by a four-byt
 
 Requests are limited to 32 MiB; responses must be smaller than 1 MiB. The extension uses one persistent `connectNative` port and matches responses by ID. Reads time out after 20 seconds without closing the port. Mutations wait for acknowledgement or disconnection; a hung mutation may wait until the process ends. The next request reconnects after a disconnect.
 
+Chromium authorizes `chrome-extension://ijkioljfdaaplhaldbdpabckkfcieiee/` through `allowed_origins`. Firefox authorizes `pagevault@pagevault.local` through `allowed_extensions`. Both use the same framed protocol and archive. Firefox passes an absolute native-manifest path and add-on ID when starting the host; these arguments are transport metadata and never select a database or executable command. Database selection still uses the explicit CLI option, environment or adjacent `pagevault.json` configuration.
+
 ## Commands
 
 | Type | Parameters | Result |

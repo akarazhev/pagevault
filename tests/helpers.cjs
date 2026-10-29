@@ -16,6 +16,16 @@ function browserOptions() {
     result.executablePath = process.env.PAGEVAULT_CHROMIUM_PATH;
   return result;
 }
+async function launchBrowser() {
+  if (process.env.PAGEVAULT_TEST_BROWSER === 'firefox')
+    return playwright().firefox.launch({
+      headless: true,
+      ...(process.env.PAGEVAULT_FIREFOX_PATH
+        ? { executablePath: process.env.PAGEVAULT_FIREFOX_PATH }
+        : {}),
+    });
+  return playwright().chromium.launch(browserOptions());
+}
 async function serveProject() {
   const root = path.resolve(__dirname, '..');
   const types = {
@@ -57,4 +67,4 @@ async function serveProject() {
       }),
   };
 }
-module.exports = { playwright, browserOptions, serveProject };
+module.exports = { playwright, browserOptions, launchBrowser, serveProject };

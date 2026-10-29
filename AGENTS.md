@@ -4,7 +4,7 @@ These instructions apply throughout this repository. Use the linked project docu
 
 ## Project and entry points
 
-PageVault saves loaded web page content in a local SQLite archive. It consists of a Chromium Manifest V3 extension in plain JavaScript and a Go helper. The helper provides Native Messaging, a read-only MCP server over stdio, and installation commands. There is no remote collection service or telemetry.
+PageVault saves loaded web page content in a local SQLite archive. It consists of Chromium and Firefox Manifest V3 packages built from shared plain JavaScript sources and a Go helper. The helper provides Native Messaging, a read-only MCP server over stdio, and installation commands. There is no remote collection service or telemetry.
 
 Capture flow: DOM → content script → background worker → IndexedDB outbox → Native Messaging → SQLite.
 
@@ -31,11 +31,11 @@ Run commands from the repository root. Follow the toolchain versions in `go.mod`
 
 ```sh
 npm ci
-npx playwright install chromium
+npx playwright install chromium firefox
 npm run build
 ```
 
-On Linux, browser tests may need `npx playwright install --with-deps chromium`. `npm run build` writes the local helper to `bin/pagevault-host`; it does not register the helper with a browser.
+On Linux, browser tests may need `npx playwright install --with-deps chromium firefox`. `npm run build` writes the local helper to `bin/pagevault-host`; it does not register the helper with a browser. `npm run package:firefox` generates the Firefox package; keep all application assets in `extension/` and do not edit generated `extension-firefox/` files.
 
 Common validation commands:
 
@@ -43,6 +43,7 @@ Common validation commands:
 go test ./...
 go vet ./...
 npm test
+npm run test:firefox
 npm run lint
 npm run format:check
 npm run check

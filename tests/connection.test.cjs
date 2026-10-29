@@ -46,3 +46,11 @@ test('platform instructions keep downloads on the published releases page', asyn
   assert.match(platformInstructions('win').command, /install-windows/);
   assert.match(platformInstructions('linux').command, /bash install.sh chrome/);
 });
+
+test('Firefox helper instructions select Firefox on every desktop platform', async () => {
+  const { platformInstructions } = await import('../extension/lib/connection.js');
+  assert.equal(platformInstructions('linux', 'firefox').command, 'bash install.sh firefox');
+  assert.equal(platformInstructions('win', 'firefox').command, '.\\install-windows.cmd firefox');
+  assert.match(platformInstructions('mac', 'firefox').install, /Firefox/);
+  assert.equal(platformInstructions('linux').command, 'bash install.sh chrome');
+});

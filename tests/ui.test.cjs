@@ -1,10 +1,10 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { playwright, browserOptions, serveProject } = require('./helpers.cjs');
+const { launchBrowser, serveProject } = require('./helpers.cjs');
 let browser, server;
 before(async () => {
   server = await serveProject();
-  browser = await playwright().chromium.launch(browserOptions());
+  browser = await launchBrowser();
 });
 after(async () => {
   await browser?.close();
@@ -205,7 +205,6 @@ test('chunk reader discards same-length changed revisions and restarts without c
   try {
     await page.goto(server.url + '/blank');
     const result = await page.evaluate(async () => {
-      const { readChunked } = await import('/extension/ui/common.js');
       const old = Array.from(JSON.stringify({ text: 'Старое 🦊 значение' }));
       const fresh = Array.from(JSON.stringify({ text: 'Новое! 🌍 значение' }));
       const offsets = [];
@@ -232,6 +231,7 @@ test('chunk reader discards same-length changed revisions and restarts without c
           },
         },
       };
+      const { readChunked } = await import('/extension/ui/common.js');
       return { value: await readChunked('pages.export', { page_id: 1 }), offsets };
     });
     assert.equal(result.value.text, 'Новое! 🌍 значение');
@@ -245,7 +245,6 @@ test('chunk reader stops after two restarts when the archive keeps changing', as
   try {
     await page.goto(server.url + '/blank');
     const result = await page.evaluate(async () => {
-      const { readChunked } = await import('/extension/ui/common.js');
       let calls = 0,
         starts = 0;
       const chars = Array.from('{"text":"changing"}');
@@ -270,6 +269,7 @@ test('chunk reader stops after two restarts when the archive keeps changing', as
           },
         },
       };
+      const { readChunked } = await import('/extension/ui/common.js');
       try {
         await readChunked('pages.export', { page_id: 1 });
         return { success: true, starts };

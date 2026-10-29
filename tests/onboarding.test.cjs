@@ -1,10 +1,10 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { playwright, browserOptions, serveProject } = require('./helpers.cjs');
+const { launchBrowser, serveProject } = require('./helpers.cjs');
 let browser, server;
 before(async () => {
   server = await serveProject();
-  browser = await playwright().chromium.launch(browserOptions());
+  browser = await launchBrowser();
 });
 after(async () => {
   await browser?.close();
@@ -29,7 +29,12 @@ async function fixture(options = {}) {
     window.chrome = {
       runtime: {
         id: 'ijkioljfdaaplhaldbdpabckkfcieiee',
-        getManifest: () => ({ version: '1.4.0' }),
+        getManifest: () => ({
+          version: '1.4.0',
+          ...(options.firefox
+            ? { browser_specific_settings: { gecko: { id: 'pagevault@pagevault.local' } } }
+            : {}),
+        }),
         getPlatformInfo: async () => {
           if (fixture.platformFailure) throw Error('platform lookup failed');
           return { os: 'mac' };
@@ -65,6 +70,11 @@ async function fixture(options = {}) {
         },
       },
     };
+    if (options.firefox) {
+      window.browser = window.chrome;
+      window.browser.runtime.id = 'pagevault@pagevault.local';
+      delete window.chrome;
+    }
   }, options);
   await page.goto(server.url + '/extension/ui/options.html');
   await page.waitForFunction(() => !document.querySelector('#settings-fields').disabled);
@@ -91,6 +101,28 @@ test('unavailable helper shows install flow, actual extension ID, download page 
     assert.match(await page.locator('#platform-detail').innerText(), /\.pkg/);
     assert.equal(await page.locator('#platform-command').isVisible(), false);
     assert.match(await page.locator('#queue-status').innerText(), /3 captures/);
+  } finally {
+    await page.close();
+  }
+});
+
+test('Firefox settings use promise APIs and show Firefox helper installation commands', async () => {
+  const page = await fixture({ firefox: true });
+  try {
+    assert.equal(await page.locator('#extension-id').innerText(), 'pagevault@pagevault.local');
+    await page.locator('#download-platform').selectOption('linux');
+    assert.equal(
+      await page.locator('#platform-command code').innerText(),
+      'bash install.sh firefox',
+    );
+    await page.locator('#download-platform').selectOption('win');
+    assert.equal(
+      await page.locator('#platform-command code').innerText(),
+      '.\\install-windows.cmd firefox',
+    );
+    await page.locator('#check-connection').click();
+    await page.waitForFunction(() => !document.querySelector('#check-connection').disabled);
+    assert.match(await page.locator('#host-error').innerText(), /Native host unavailable/);
   } finally {
     await page.close();
   }

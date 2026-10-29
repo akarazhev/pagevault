@@ -1,10 +1,10 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { playwright, browserOptions, serveProject } = require('./helpers.cjs');
+const { launchBrowser, serveProject } = require('./helpers.cjs');
 let server, browser;
 before(async () => {
   server = await serveProject();
-  browser = await playwright().chromium.launch(browserOptions());
+  browser = await launchBrowser();
 });
 after(async () => {
   await browser?.close();

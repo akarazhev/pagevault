@@ -75,7 +75,7 @@ func run(args []string, input io.Reader, output, errorOutput io.Writer, executab
 		options := install.Options{ExecutablePath: executable}
 		flags := flag.NewFlagSet(command, flag.ContinueOnError)
 		flags.SetOutput(errorOutput)
-		flags.StringVar(&options.Browser, "browser", "chrome", "chrome, chromium, edge or brave")
+		flags.StringVar(&options.Browser, "browser", "chrome", "chrome, chromium, edge, brave or firefox")
 		flags.StringVar(&options.ExtensionID, "extension-id", "", "Extension ID (defaults to the standard PageVault ID)")
 		flags.StringVar(&options.ExtensionManifest, "extension-manifest", "", "manifest.json used to derive the extension ID")
 		flags.StringVar(&options.DBPath, "db", "", "SQLite file")
@@ -128,6 +128,11 @@ func run(args []string, input io.Reader, output, errorOutput io.Writer, executab
 }
 
 func parseServeArgs(args []string, errorOutput io.Writer) (string, bool, error) {
+	// Firefox supplies a manifest path and add-on ID. They are transport metadata,
+	// not database paths; never open the supplied manifest or execute its contents.
+	if len(args) >= 2 && filepath.IsAbs(args[0]) && strings.HasSuffix(args[0], ".json") && install.ValidFirefoxExtensionID(args[1]) {
+		args = args[2:]
+	}
 	// Chromium appends its extension origin and, on Windows, a parent-window value.
 	// They are transport metadata, never a source of file paths or commands.
 	filtered := make([]string, 0, len(args))
@@ -202,5 +207,5 @@ pagevault-host mcp [--db PATH]
 
 With no command, Native Messaging uses framed JSON on stdin/stdout.
 The mcp command serves an existing archive read-only over stdio.
-Browsers: chrome, chromium, edge, brave. See README.md.
+Browsers: chrome, chromium, edge, brave, firefox. See README.md.
 `
